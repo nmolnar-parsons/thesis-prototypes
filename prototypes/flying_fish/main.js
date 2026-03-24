@@ -59,6 +59,9 @@ d3.csv("../../datasets/bluefin_tuna_imports.csv").then(function(rawData) {
   // Function to render Sankey diagram
   function renderSankey(data, countryContinent, sortedCountries, districts, nodeIndices, links, nodes) {
     svg.selectAll("*").remove();
+
+    // Build gradients for district nodes to show continent contribution proportions.
+    const defs = svg.append("defs");
     
     // Create Sankey layout
     const sankey = d3
@@ -74,6 +77,59 @@ d3.csv("../../datasets/bluefin_tuna_imports.csv").then(function(rawData) {
       nodes: nodes.map(d => ({ ...d })),
       links: links.map(d => ({ ...d }))
     });
+
+    const districtGradientIds = new Map();
+    graph.nodes
+      .filter(d => d.type === "district")
+      .forEach((districtNode, i) => {
+        const nodeHeight = districtNode.y1 - districtNode.y0;
+        const incomingLinks = (districtNode.targetLinks || [])
+          .filter(link => link.width > 0)
+          .sort((a, b) => (a.y1 - a.width / 2) - (b.y1 - b.width / 2));
+
+        if (nodeHeight <= 0 || incomingLinks.length === 0) {
+          return;
+        }
+
+        const gradientId = `district-gradient-${i}`;
+        const gradient = defs
+          .append("linearGradient")
+          .attr("id", gradientId)
+          .attr("x1", "0%")
+          .attr("x2", "0%")
+          .attr("y1", "0%")
+          .attr("y2", "100%");
+
+        const clampPercent = value => Math.max(0, Math.min(100, value));
+        let cursor = 0;
+        let previousColor = "#cccccc";
+
+        incomingLinks.forEach(link => {
+          const top = link.y1 - link.width / 2;
+          const bottom = link.y1 + link.width / 2;
+          const start = clampPercent(((top - districtNode.y0) / nodeHeight) * 100);
+          const end = clampPercent(((bottom - districtNode.y0) / nodeHeight) * 100);
+          const color = continentColors[link.source.continent] || "#999";
+
+          if (start > cursor) {
+            gradient.append("stop").attr("offset", `${cursor}%`).attr("stop-color", previousColor);
+            gradient.append("stop").attr("offset", `${start}%`).attr("stop-color", previousColor);
+          }
+
+          gradient.append("stop").attr("offset", `${start}%`).attr("stop-color", color);
+          gradient.append("stop").attr("offset", `${end}%`).attr("stop-color", color);
+
+          cursor = end;
+          previousColor = color;
+          });
+
+        if (cursor < 100) {
+          gradient.append("stop").attr("offset", `${cursor}%`).attr("stop-color", previousColor);
+          gradient.append("stop").attr("offset", "100%").attr("stop-color", previousColor);
+        }
+
+        districtGradientIds.set(districtNode.id, gradientId);
+      });
 
     // Color scale for links
     const linkColor = d => {
@@ -136,6 +192,8 @@ d3.csv("../../datasets/bluefin_tuna_imports.csv").then(function(rawData) {
       .attr("fill", d => {
         if (d.type === "country") {
           return continentColors[d.continent] || "#999";
+        } else if (districtGradientIds.has(d.id)) {
+          return `url(#${districtGradientIds.get(d.id)})`;
         } else {
           return "#cccccc";
         }
@@ -301,8 +359,23 @@ d3.csv("../../datasets/bluefin_tuna_imports.csv").then(function(rawData) {
 
     // Store continent info for coloring
     const countryContinent = {};
+    const districtContinentVolumes = {};
     data.forEach(d => {
       countryContinent[d["Country Name"]] = d.Continent;
+
+      const district = d["US Customs District"];
+      const continent = d.Continent;
+      const volume = parseFloat(d["Volume (kg)"]);
+
+      if (!districtContinentVolumes[district]) {
+        districtContinentVolumes[district] = {};
+      }
+
+      if (!districtContinentVolumes[district][continent]) {
+        districtContinentVolumes[district][continent] = 0;
+      }
+
+      districtContinentVolumes[district][continent] += volume;
     });
 
     // Sort countries by continent
@@ -334,7 +407,8 @@ d3.csv("../../datasets/bluefin_tuna_imports.csv").then(function(rawData) {
       nodes.push({
         id: nodeId,
         name: district,
-        type: "district"
+        type: "district",
+        continentBreakdown: districtContinentVolumes[district] || {}
       });
       nodeId++;
     });
