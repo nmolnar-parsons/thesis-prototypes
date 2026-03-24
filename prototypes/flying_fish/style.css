@@ -87,10 +87,47 @@ body {
 }
 
 #viz {
+  position: relative;
   background-color: white;
   border-radius: 8px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   display: inline-block;
+}
+
+#colorLegend {
+  position: absolute;
+  top: 14px;
+  left: 14px;
+  background: rgba(255, 255, 255, 0.95);
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  padding: 8px 10px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.12);
+  z-index: 10;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+  line-height: 1.4;
+}
+
+.legend-item + .legend-item {
+  margin-top: 4px;
+}
+
+.legend-swatch {
+  width: 12px;
+  height: 12px;
+  border: 1px solid rgba(0, 0, 0, 0.2);
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+
+.legend-label {
+  white-space: nowrap;
 }
 
 svg {

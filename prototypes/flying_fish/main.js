@@ -3,17 +3,17 @@
 
 // Color scheme by continent
 const continentColors = {
-  "AFRICA": "#FF6B6B",
-  "ASIA": "#FFA500",
-  "EUROPE": "#4ECDC4",
-  "NORTH AMERICA": "#95E1D3",
-  "OCEANIA": "#F38181",
+  "AFRICA": "#FFA500",
+  "ASIA": "#ff3131",
+  "EUROPE": "#4e9acd",
+  "NORTH AMERICA": "#4ad82e",
+  "OCEANIA": "#d27dfa",
   "SOUTH AMERICA": "#AA96DA"
 };
 
 // Set up dimensions
-const margin = { top: 20, right: 200, bottom: 40, left: 200 };
-const width = 1500 - margin.left - margin.right - 400;
+const margin = { top: 20, right: 200, bottom: 40, left: 250 };
+const width = 1500 - margin.left - margin.right;
 const height = 900 - margin.top - margin.bottom;
 
 // State
@@ -44,12 +44,50 @@ const svg = d3
   .append("g")
   .attr("transform", `translate(${margin.left},${margin.top})`);
 
+// Create static color legend in the top-left corner of the visualization area.
+const colorLegend = d3
+  .select("#viz")
+  .append("div")
+  .attr("id", "colorLegend");
+
+Object.entries(continentColors).forEach(([continent, color]) => {
+  const item = colorLegend
+    .append("div")
+    .attr("class", "legend-item");
+
+  item
+    .append("span")
+    .attr("class", "legend-swatch")
+    .style("background-color", color);
+
+  item
+    .append("span")
+    .attr("class", "legend-label")
+    .text(continent);
+});
+
 // Load and process data
 d3.csv("../../datasets/bluefin_tuna_imports.csv").then(function(rawData) {
   // Get unique years and set slider range
   const allYears = Array.from(new Set(rawData.map(d => parseInt(d.Year)))).sort((a, b) => a - b);
   const minYear = allYears[0];
   const maxYear = allYears[allYears.length - 1];
+
+  // Build a fixed country order across all years.
+  const globalCountryContinent = {};
+  rawData.forEach(d => {
+    globalCountryContinent[d["Country Name"]] = d.Continent;
+  });
+
+  const globalCountryOrder = Array
+    .from(new Set(rawData.map(d => d["Country Name"])))
+    .sort((a, b) => {
+      const continentA = globalCountryContinent[a] || "";
+      const continentB = globalCountryContinent[b] || "";
+      const continentCompare = continentA.localeCompare(continentB);
+      if (continentCompare !== 0) return continentCompare;
+      return a.localeCompare(b);
+    });
   
   d3.select("#yearSlider")
     .attr("min", minYear)
@@ -378,10 +416,8 @@ d3.csv("../../datasets/bluefin_tuna_imports.csv").then(function(rawData) {
       districtContinentVolumes[district][continent] += volume;
     });
 
-    // Sort countries by continent
-    const sortedCountries = Array.from(countries).sort((a, b) => {
-      return countryContinent[a].localeCompare(countryContinent[b]);
-    });
+    // Keep country ordering consistent across years.
+    const sortedCountries = globalCountryOrder.filter(country => countries.has(country));
 
     // Sort districts alphabetically
     const sortedDistricts = Array.from(districts).sort();
