@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Flying Fish - Tuna Imports Sankey</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/d3-sankey@0.12/dist/d3-sankey.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/d3-chord@3/dist/d3-chord.min.js"></script>
+</head>
+<body>
+    <h1>Flying Fish (But only Bluefin Tuna)</h1>
+    <div id="controls">
+        <div id="sliderControl">
+            <label for="yearSlider">Year: </label>
+            <input type="range" id="yearSlider" min="1972" max="2026" value="2025" step="1">
+            <span id="yearDisplay">2025</span>
+        </div>
+        <div id="viewControl">
+            <button id="sankeyBtn" class="view-btn active">Sankey Diagram</button>
+            <button id="chordBtn" class="view-btn">Chord Diagram</button>
+        </div>
+    </div>
+    
+    <div id="viz"></div>
+    <script src="main.js"></script>
+</body>
+</html>
