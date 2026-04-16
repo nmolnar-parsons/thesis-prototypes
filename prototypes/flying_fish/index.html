@@ -10,12 +10,18 @@
     <script src="https://cdn.jsdelivr.net/npm/d3-chord@3/dist/d3-chord.min.js"></script>
 </head>
 <body>
-    <h1>Flying Fish (But only Bluefin Tuna)</h1>
+    <h1>Flying Fish - Sushi Imports by Species</h1>
     <div id="controls">
+        <div id="productControl">
+            <label for="productSelect">Fish Species: </label>
+            <select id="productSelect">
+                <option value="">Loading species...</option>
+            </select>
+        </div>
         <div id="sliderControl">
             <label for="yearSlider">Year: </label>
-            <input type="range" id="yearSlider" min="1972" max="2026" value="2025" step="1">
-            <span id="yearDisplay">2025</span>
+            <input type="range" id="yearSlider" min="1972" max="2026" value="2026" step="1">
+            <span id="yearDisplay">2026</span>
         </div>
         <div id="viewControl">
             <button id="sankeyBtn" class="view-btn active">Sankey</button>
@@ -23,7 +29,10 @@
         </div>
     </div>
     
-    <div id="viz"></div>
+    <div id="graphContainer">
+        <div id="timeSeriesGraph"></div>
+        <div id="viz"></div>
+    </div>
     <script src="main.js"></script>
 </body>
 </html>

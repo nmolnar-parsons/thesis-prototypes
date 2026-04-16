@@ -1,0 +1,151 @@
+<!-- Requires Mapbox access token https://docs.mapbox.com/help/glossary/access-token/ -->
+
+<!DOCTYPE html>
+<html lang='en'>
+  <head>
+    <meta charset='utf-8' />
+    <title>Add custom markers in Mapbox GL JS</title>
+    <meta name='viewport' content='width=device-width, initial-scale=1' />
+
+    <style>
+      body {
+        margin: 0;
+        padding: 0;
+      }
+
+      #map {
+        position: absolute;
+        top: 0;
+        bottom: 0;
+        width: 100%;
+      }
+
+      .marker {
+        /* width: 8px;
+        height: 8px;
+        background-color: black;
+        border-radius: 50%;
+        cursor: pointer; */
+        background-image: url('marker.png');
+        background-size: cover;
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        cursor: pointer;
+      }
+
+      .mapboxgl-popup {
+        max-width: 200px;
+      }
+
+      .mapboxgl-popup-content {
+        text-align: center;
+        font-family: sans-serif;
+      }
+
+      #controls {
+        position: absolute;
+        bottom: 20px;
+        left: 20px;
+        background: white;
+        padding: 15px;
+        border-radius: 5px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+        font-family: sans-serif;
+        z-index: 10;
+      }
+
+      #controls label {
+        display: block;
+        margin-bottom: 10px;
+        font-weight: bold;
+      }
+
+      #yearSlider {
+        width: 200px;
+      }
+
+      #yearValue {
+        font-weight: bold;
+        color: #333;
+        margin-top: 5px;
+      }
+
+      .toggle-group {
+        margin-top: 15px;
+      }
+
+      .toggle-btn {
+        padding: 8px 15px;
+        margin-right: 5px;
+        border: 2px solid #ccc;
+        background: white;
+        cursor: pointer;
+        border-radius: 3px;
+        font-size: 14px;
+      }
+
+      .toggle-btn.active,
+      .dataset-btn.active {
+        background: #333;
+        color: white;
+        border-color: #333;
+      }
+
+      .dataset-btn {
+        padding: 8px 12px;
+        margin-right: 5px;
+        margin-bottom: 5px;
+        border: 2px solid #ccc;
+        background: white;
+        cursor: pointer;
+        border-radius: 3px;
+        font-size: 12px;
+      }
+
+      #projectionSelect {
+        padding: 8px;
+        font-size: 14px;
+        border: 2px solid #ccc;
+        border-radius: 3px;
+        cursor: pointer;
+      }
+    </style>
+  </head>
+  <body>
+    <div id='map'></div>
+    <div id='controls'>
+      <label for='yearSlider'>Year: <span id='yearValue'>2020</span></label>
+      <input type='range' id='yearSlider' min='1965' max='2023' value='2020' />
+      
+      <div class='toggle-group'>
+        <label>Count Type:</label>
+        <button class='toggle-btn active' data-type='count'>Count (no)</button>
+        <button class='toggle-btn' data-type='tonne'>Tonne (t)</button>
+      </div>
+
+      <div class='toggle-group'>
+        <label>Dataset:</label>
+        <button class='dataset-btn active' data-dataset='catch1deg'>1° Catch</button>
+        <button class='dataset-btn' data-dataset='sea1deg'>1° Sea</button>
+        <button class='dataset-btn' data-dataset='grid1deg'>1° Grid</button>
+        <button class='dataset-btn' data-dataset='catch5deg'>5° Catch</button>
+        <button class='dataset-btn' data-dataset='bluefin-only-5deg'>bluefin</button>
+      </div>
+
+      <div class='toggle-group'>
+        <label for='projectionSelect'>Projection:</label>
+        <select id='projectionSelect'>
+          <option value='mercator'>Mercator</option>
+          <option value='equirectangular'>Equirectangular</option>
+          <option value='naturalEarth'>Natural Earth</option>
+          <option value='winkelTripel'>Winkel Tripel</option>
+        </select>
+      </div>
+    </div>
+  </body>
+  <script src="https://d3js.org/d3.v7.min.js"></script>
+  <script src='https://api.tiles.mapbox.com/mapbox-gl-js/v3.6.0/mapbox-gl.js'></script>
+  <link href='https://api.tiles.mapbox.com/mapbox-gl-js/v3.6.0/mapbox-gl.css' rel='stylesheet' />
+  <script src="app.js"></script>
+</html>

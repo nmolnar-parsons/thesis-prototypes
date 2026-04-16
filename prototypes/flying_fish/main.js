@@ -1,24 +1,27 @@
-// Tuna Imports Visualization - Sankey and Chord Diagrams
-// Data: bluefin_tuna_imports.csv
+// Fish for Sushi Imports Visualization - Sankey and Chord Diagrams
+// Data: fish_for_sushi.csv
 
 // Color scheme by continent
 const continentColors = {
   "AFRICA": "#FFA500",
   "ASIA": "#ff3131",
   "EUROPE": "#4e9acd",
-  "NORTH AMERICA": "#4ad82e",
+  "NORTH AMERICA": "#278415",
   "OCEANIA": "#d27dfa",
-  "SOUTH AMERICA": "#AA96DA"
+  "SOUTH AMERICA": "#AA96DA",
+  "CENTRAL AMERICA": "#4ad82e",
+  "CARIBBEAN": "#4ad82e"
 };
 
-// Set up dimensions
+// Set up dimensions - will be adjusted based on container
 const margin = { top: 20, right: 200, bottom: 40, left: 250 };
-const width = 1500 - margin.left - margin.right;
-const height = 900 - margin.top - margin.bottom;
+let width = 1200 - margin.left - margin.right;
+let height = 900 - margin.top - margin.bottom;
 
 // State
 let currentView = "sankey";
 let currentYear = 2025;
+let currentProduct = "";
 
 // Create tooltip
 const tooltip = d3
@@ -36,13 +39,31 @@ const tooltip = d3
   .style("box-shadow", "0 2px 8px rgba(0,0,0,0.15)");
 
 // Create SVG
-const svg = d3
-  .select("#viz")
-  .append("svg")
-  .attr("width", width + margin.left + margin.right)
-  .attr("height", height + margin.top + margin.bottom)
-  .append("g")
-  .attr("transform", `translate(${margin.left},${margin.top})`);
+let svg = null;
+let vizContainer = null;
+
+function initializeSVG() {
+  // Clear previous SVG if exists
+  d3.select("#viz").selectAll("svg").remove();
+  
+  vizContainer = d3.select("#viz").node();
+  const containerWidth = vizContainer.clientWidth || 1500;
+  
+  // Update width based on container, but enforce minimum margins
+  width = Math.max(400, containerWidth - margin.left - margin.right);
+  const svgHeight = height + margin.top + margin.bottom;
+  
+  svg = d3
+    .select("#viz")
+    .append("svg")
+    .attr("width", containerWidth)
+    .attr("height", svgHeight)
+    .append("g")
+    .attr("transform", `translate(${margin.left},${margin.top})`);
+}
+
+// Initialize SVG on page load
+initializeSVG();
 
 // Create static color legend in the top-left corner of the visualization area.
 const colorLegend = d3
@@ -67,11 +88,179 @@ Object.entries(continentColors).forEach(([continent, color]) => {
 });
 
 // Load and process data
-d3.csv("../../datasets/bluefin_tuna_imports.csv").then(function(rawData) {
+d3.csv("../../datasets/fish_for_sushi.csv").then(function(rawData) {
   // Get unique years and set slider range
   const allYears = Array.from(new Set(rawData.map(d => parseInt(d.Year)))).sort((a, b) => a - b);
   const minYear = allYears[0];
   const maxYear = allYears[allYears.length - 1];
+
+  // Function to create time series graph showing total volume and value by year
+  function renderTimeSeriesGraph(data, selectedYear, selectedProduct) {
+    // Filter data by selected product if specified
+    let filteredData = data;
+    if (selectedProduct) {
+      filteredData = data.filter(d => d["Product Name"] === selectedProduct);
+    }
+    const tsContainer = d3.select("#timeSeriesGraph").node();
+    const tsContainerWidth = tsContainer.clientWidth || 1500;
+    
+    const tsMargin = { top: 20, right: 200, bottom: 40, left: 100 };
+    const tsPadding = {top:20 , bottom:20}
+    const tsWidth = tsContainerWidth - tsMargin.left - tsMargin.right;
+    const tsHeight = 200 - tsMargin.top - tsMargin.bottom;
+
+    // Clear previous graph
+    d3.select("#timeSeriesGraph").selectAll("svg").remove();
+
+    // Aggregate data by year
+    const yearData = d3.rollup(
+      filteredData,
+      (v) => ({
+        totalVolume: d3.sum(v, (d) => parseFloat(d["Volume (kg)"]) || 0),
+        totalValue: d3.sum(v, (d) => parseFloat(d["Value (USD)"]) || 0),
+      }),
+      (d) => parseInt(d.Year)
+    );
+
+    const timeSeriesData = Array.from(yearData, ([year, values]) => ({
+      year,
+      ...values,
+    })).sort((a, b) => a.year - b.year);
+
+    // Create SVG
+    const tsSvg = d3
+      .select("#timeSeriesGraph")
+      .append("svg")
+      .attr("width", tsWidth + tsMargin.left + tsMargin.right)
+      .attr("height", tsHeight + tsMargin.top + tsMargin.bottom)
+      .attr("padding", `${tsPadding.top}px ${tsPadding.bottom}px`)
+      .append("g")
+      .attr("transform", `translate(${tsMargin.left},${tsMargin.top})`);
+
+    // Scales
+    const xScale = d3
+      .scaleLinear()
+      .domain([minYear, maxYear])
+      .range([0, tsWidth]);
+
+    const yScaleVolume = d3
+      .scaleLinear()
+      .domain([0, d3.max(timeSeriesData, (d) => d.totalVolume)])
+      .range([tsHeight, 0]);
+
+    const yScaleValue = d3
+      .scaleLinear()
+      .domain([0, d3.max(timeSeriesData, (d) => d.totalValue)])
+      .range([tsHeight, 0]);
+
+    // Line generators
+    const lineVolume = d3
+      .line()
+      .x((d) => xScale(d.year))
+      .y((d) => yScaleVolume(d.totalVolume));
+
+    const lineValue = d3
+      .line()
+      .x((d) => xScale(d.year))
+      .y((d) => yScaleValue(d.totalValue));
+
+    // Draw volume line
+    tsSvg
+      .append("path")
+      .datum(timeSeriesData)
+      .attr("fill", "none")
+      .attr("stroke", "#4ad82e")
+      .attr("stroke-width", 2.5)
+      .attr("d", lineVolume);
+
+    // Draw value line
+    tsSvg
+      .append("path")
+      .datum(timeSeriesData)
+      .attr("fill", "none")
+      .attr("stroke", "#ff3131")
+      .attr("stroke-width", 2.5)
+      .attr("d", lineValue);
+
+    // Draw selected year vertical bar
+    const selectedX = xScale(selectedYear);
+    tsSvg
+      .append("line")
+      .attr("x1", selectedX)
+      .attr("x2", selectedX)
+      .attr("y1", 0)
+      .attr("y2", tsHeight)
+      .attr("stroke", "#FFD700")
+      .attr("stroke-width", 3)
+      .attr("opacity", 0.7)
+      .attr("stroke-dasharray", "5,5");
+
+    // X-axis
+    tsSvg
+      .append("g")
+      .attr("transform", `translate(0,${tsHeight})`)
+      .call(d3.axisBottom(xScale).tickFormat(d3.format("d")))
+      .append("text")
+      .attr("x", tsWidth / 2)
+      .attr("y", 30)
+      .attr("fill", "black")
+      .style("text-anchor", "middle")
+      .text("Year");
+
+    // Left Y-axis (Volume)
+    tsSvg
+      .append("g")
+      .call(d3.axisLeft(yScaleVolume))
+      .append("text")
+      .attr("transform", "rotate(-90)")
+      .attr("y", 0 - tsMargin.left)
+      .attr("x", 0 - tsHeight / 2)
+      .attr("dy", "1em")
+      .style("text-anchor", "middle")
+      .style("fill", "#4ad82e")
+      .text("Volume (kg)");
+
+    // Right Y-axis (Value)
+    tsSvg
+      .append("g")
+      .attr("transform", `translate(${tsWidth},0)`)
+      .call(d3.axisRight(yScaleValue))
+      .append("text")
+      .attr("transform", "rotate(90)")
+      .attr("y", - 120)
+      .attr("x", tsHeight / 2)
+      .attr("dy", "1em")
+      .style("text-anchor", "middle")
+      .style("fill", "#ff3131")
+      .text("Value (USD)");
+
+    // Legend
+    const legend = tsSvg
+      .append("g")
+      .attr("font-size", "12px")
+      .attr("text-anchor", "start")
+      .selectAll("g")
+      .data([
+        { label: "Total Volume", color: "#4ad82e" },
+        { label: "Total Value", color: "#ff3131" },
+      ])
+      .enter()
+      .append("g")
+      .attr("transform", (d, i) => `translate(0,${i * 20})`);
+
+    legend
+      .append("line")
+      .attr("x1", 0)
+      .attr("x2", 20)
+      .attr("stroke", (d) => d.color)
+      .attr("stroke-width", 2.5);
+
+    legend
+      .append("text")
+      .attr("x", 30)
+      .attr("y", "0.31em")
+      .text((d) => d.label);
+  }
 
   // Build a fixed country order across all years.
   const globalCountryContinent = {};
@@ -88,6 +277,20 @@ d3.csv("../../datasets/bluefin_tuna_imports.csv").then(function(rawData) {
       if (continentCompare !== 0) return continentCompare;
       return a.localeCompare(b);
     });
+  
+  // Get unique product names and populate dropdown
+  const allProducts = Array.from(new Set(rawData.map(d => d["Product Name"]))).sort();
+  currentProduct = allProducts[0] || "";
+
+  const productSelect = d3.select("#productSelect");
+  productSelect.selectAll("option").remove();
+  productSelect
+    .selectAll("option")
+    .data(allProducts)
+    .enter()
+    .append("option")
+    .attr("value", d => d)
+    .text(d => d);
   
   d3.select("#yearSlider")
     .attr("min", minYear)
@@ -377,11 +580,15 @@ d3.csv("../../datasets/bluefin_tuna_imports.csv").then(function(rawData) {
       .text(d => names[d.index]);
   }
 
-  // Function to update visualization for a given year
-  function updateVisualization(selectedYear) {
-    // Filter data for selected year
-    const data = rawData.filter(d => parseInt(d.Year) === selectedYear);
+  // Function to update visualization for a given year and product
+  function updateVisualization(selectedYear, selectedProduct) {
+    // Filter data for selected year and product
+    let data = rawData.filter(d => parseInt(d.Year) === selectedYear);
+    if (selectedProduct) {
+      data = data.filter(d => d["Product Name"] === selectedProduct);
+    }
     currentYear = selectedYear;
+    currentProduct = selectedProduct;
 
     if (data.length === 0) {
       console.log(`No data for year ${selectedYear}`);
@@ -474,6 +681,9 @@ d3.csv("../../datasets/bluefin_tuna_imports.csv").then(function(rawData) {
       }
     });
 
+    // Render time series graph
+    renderTimeSeriesGraph(rawData, selectedYear, selectedProduct);
+
     // Render based on current view
     if (currentView === "sankey") {
       renderSankey(data, countryContinent, sortedCountries, districts, nodeIndices, links, nodes);
@@ -483,12 +693,18 @@ d3.csv("../../datasets/bluefin_tuna_imports.csv").then(function(rawData) {
   }
 
   // Initial render
-  updateVisualization(2025);
+  updateVisualization(2026, currentProduct);
 
   // Add slider event listener
   d3.select("#yearSlider").on("input", function() {
     const year = parseInt(this.value);
-    updateVisualization(year);
+    updateVisualization(year, currentProduct);
+  });
+
+  // Add product selector event listener
+  d3.select("#productSelect").on("change", function() {
+    const product = this.value;
+    updateVisualization(currentYear, product);
   });
 
   // Add view toggle buttons
@@ -496,13 +712,13 @@ d3.csv("../../datasets/bluefin_tuna_imports.csv").then(function(rawData) {
     currentView = "sankey";
     d3.select("#sankeyBtn").classed("active", true);
     d3.select("#chordBtn").classed("active", false);
-    updateVisualization(currentYear);
+    updateVisualization(currentYear, currentProduct);
   });
 
   d3.select("#chordBtn").on("click", function() {
     currentView = "chord";
     d3.select("#sankeyBtn").classed("active", false);
     d3.select("#chordBtn").classed("active", true);
-    updateVisualization(currentYear);
+    updateVisualization(currentYear, currentProduct);
   });
 });
