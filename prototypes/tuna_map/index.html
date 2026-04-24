@@ -124,6 +124,25 @@
         width: 250px;
       }
 
+      #zoomOutAnimationControls {
+        position: absolute;
+        right: 20px;
+        top: 430px;
+        background: white;
+        padding: 16px;
+        border-radius: 5px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+        font-family: sans-serif;
+        z-index: 10;
+        width: 250px;
+      }
+
+      #zoomOutAnimationControls h3 {
+        margin: 0 0 12px 0;
+        font-size: 16px;
+        color: #333;
+      }
+
       #animationControls h3 {
         margin: 0 0 15px 0;
         font-size: 16px;
@@ -199,6 +218,72 @@
       .reset-btn:hover {
         background: #e0e0e0;
       }
+
+      #bottomOverlay {
+        position: absolute;
+        left: 50%;
+        bottom: 20px;
+        transform: translateX(-50%);
+        z-index: 11;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 8px;
+        pointer-events: none;
+      }
+
+      #yearTicker {
+        /* background: rgba(255, 255, 255, 0.9); */
+        /* border: 1px solid rgba(0, 0, 0, 0.15); */
+        /* border-radius: 20px; */
+        padding: 6px 14px;
+        font-family: sans-serif;
+        font-size: 14px;
+        color: #ffffff;
+        font-weight: 700;
+      }
+
+      #colorScale {
+        width: min(300px, 72vw);
+        /* background: rgba(255, 255, 255, 0.9); */
+        /* border: 1px solid rgba(0, 0, 0, 0.15); */
+        /* border-radius: 8px; */
+        padding: 10px 12px;
+        font-family: sans-serif;
+      }
+
+      .color-scale-title {
+        font-size: 11px;
+        color: #333;
+        margin-bottom: 7px;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+      }
+
+      .color-scale-bar {
+        width: 100%;
+        height: 12px;
+        border-radius: 999px;
+        background: linear-gradient(
+          to right,
+          #13265f 0%,
+          #FFD700 12%,
+          #FF8C00 28%,
+          #FF6347 42%,
+          #DC143C 58%,
+          #8B0000 74%,
+          #660000 88%,
+          #330000 100%
+        );
+      }
+
+      .color-scale-labels {
+        margin-top: 6px;
+        display: flex;
+        justify-content: space-between;
+        font-size: 11px;
+        color: #ffffff;
+      }
     </style>
   </head>
   <body>
@@ -211,6 +296,7 @@
         <label>Count Type:</label>
         <button class='toggle-btn active' data-type='count'>Count (no)</button>
         <button class='toggle-btn' data-type='tonne'>Tonne (t)</button>
+        <button class='toggle-btn' data-type='both'>Both</button>
       </div>
 
       <div class='toggle-group'>
@@ -230,6 +316,11 @@
           <option value='naturalEarth'>Natural Earth</option>
           <option value='winkelTripel'>Winkel Tripel</option>
         </select>
+      </div>
+
+      <div class='toggle-group'>
+        <label for='zoomSlider'>Zoom: <span id='zoomValue'>0.25</span></label>
+        <input type='range' id='zoomSlider' min='0' max='9' step='0.05' value='0.25' />
       </div>
     </div>
     <div id='animationControls'>
@@ -263,6 +354,37 @@
       <div class='button-group'>
         <button class='anim-btn' id='playPauseBtn'>Play</button>
         <button class='anim-btn' id='resetBtn' style='flex: 0.6;'>Reset</button>
+      </div>
+    </div>
+    <div id='zoomOutAnimationControls'>
+      <h3>Zoom Out Animation</h3>
+
+      <div class='control-group'>
+        <label for='zoomOutSpeedSlider'>Zoom Out Speed: <span class='control-value' id='zoomOutSpeedValue'>0.10</span> zoom/s</label>
+        <input type='range' id='zoomOutSpeedSlider' min='0.01' max='2' step='0.01' value='0.10' />
+      </div>
+
+      <div class='control-group'>
+        <label for='zoomOutTargetSlider'>Stop At Zoom: <span class='control-value' id='zoomOutTargetValue'>0.25</span></label>
+        <input type='range' id='zoomOutTargetSlider' min='0' max='9' step='0.05' value='0.25' />
+      </div>
+
+      <button class='anim-btn' id='zoomOutPlayPauseBtn' style='width: 100%;'>Start Zoom Out</button>
+    </div>
+    <div id='bottomOverlay'>
+      <div id='yearTicker'><span id='yearTickerValue'>2020</span></div>
+      <div id='colorScale'>
+        <div class='color-scale-bar'></div>
+        <div class='color-scale-labels'>
+          <span>0</span>
+          <span>100</span>
+          <span>500</span>
+          <span>1k</span>
+          <span>5k</span>
+          <span>10k</span>
+          <span>50k</span>
+          <span>100k+</span>
+        </div>
       </div>
     </div>
   </body>

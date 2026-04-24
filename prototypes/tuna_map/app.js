@@ -7,7 +7,42 @@ mapboxgl.accessToken = ''; // replace with your own access token
 let currentYear = 2020;
 let currentType = 'count';
 let currentDataset = 'catch1deg';
-let ocean_color = '#1b4974';
+let ocean_color = '#13265f';
+
+function getYearPropertyExpression(type, year) {
+  return ['coalesce', ['get', `${type}_${year}`], 0];
+}
+
+function getCountEquivalentExpression(type, year) {
+  const countExpr = getYearPropertyExpression('count', year);
+  const tonneExpr = getYearPropertyExpression('tonne', year);
+  const tonneAsCountExpr = ['ceil', ['*', tonneExpr, 40]];
+
+  if (type === 'tonne') {
+    return tonneAsCountExpr;
+  }
+
+  if (type === 'both') {
+    return ['+', countExpr, tonneAsCountExpr];
+  }
+
+  return countExpr;
+}
+
+function getColorRampExpression(valueExpr) {
+  return [
+    'interpolate', ['linear'],
+    valueExpr,
+    0,    ocean_color,
+    100,  '#FFD700',
+    500,  '#FF8C00',
+    1000, '#FF6347',
+    5000, '#DC143C',
+    10000,'#8B0000',
+    50000,'#660000',
+    100000,'#330000'
+  ];
+}
 
 // Animation state
 let isPlaying = false;
@@ -19,6 +54,10 @@ let currentRotation = 0;
 let currentPan = 0; // longitude offset
 let minYear = 1965;
 let maxYear = 2023;
+let isZoomOutAnimating = false;
+let zoomOutSpeed = 0.1; // zoom levels per second
+let zoomOutTarget = 0.25;
+let zoomOutLastFrameTime = Date.now();
 
 // UI element references
 let playPauseBtn = null;
@@ -33,6 +72,13 @@ let rotationSlider = null;
 let rotationValue = null;
 let panSpeedSlider = null;
 let panSpeedValue = null;
+let zoomSlider = null;
+let zoomValue = null;
+let zoomOutPlayPauseBtn = null;
+let zoomOutSpeedSlider = null;
+let zoomOutSpeedValue = null;
+let zoomOutTargetSlider = null;
+let zoomOutTargetValue = null;
 
 // Dataset configuration
 const datasets = {
@@ -79,7 +125,7 @@ map.on('load', function() {
   map.setFog({
     'range': [1, 10],
     'color': 'rgba(186, 186, 163, 0)',      // Fully transparent lower atmosphere
-    'high-color': 'rgba(0, 0, 0, 0)', // Fully transparent upper atmosphere
+    // 'high-color': 'rgba(0, 0, 0, 0)', // Fully transparent upper atmosphere
     'space-color': 'rgb(0, 0, 0)', // Make space background transparent
     'star-intensity': 0               // Remove stars
   });
@@ -103,18 +149,7 @@ map.on('load', function() {
     type: 'fill',
     source: 'tuna-catch',
     paint: {
-      'fill-color': [
-        'interpolate', ['linear'],
-        ['coalesce', ['get', 'count_2020'], 0],
-        0,    ocean_color,
-        100,  '#FFD700',
-        500,  '#FF8C00',
-        1000, '#FF6347',
-        5000, '#DC143C',
-        10000,'#8B0000',
-        50000,'#660000',
-        100000,'#330000'
-      ],
+      'fill-color': getColorRampExpression(getCountEquivalentExpression('count', 2020)),
       'fill-opacity': 0.7
     }
   });
@@ -126,7 +161,7 @@ map.on('load', function() {
       // Only update from slider if animation is not playing
       if (!isPlaying) {
         currentYear = parseInt(e.target.value);
-        document.getElementById('yearValue').textContent = currentYear;
+        setYearDisplay(currentYear);
         updateMapLayer();
       }
     });
@@ -205,6 +240,69 @@ map.on('load', function() {
   rotationValue = document.getElementById('rotationValue');
   panSpeedSlider = document.getElementById('panSpeedSlider');
   panSpeedValue = document.getElementById('panSpeedValue');
+  zoomSlider = document.getElementById('zoomSlider');
+  zoomValue = document.getElementById('zoomValue');
+  zoomOutPlayPauseBtn = document.getElementById('zoomOutPlayPauseBtn');
+  zoomOutSpeedSlider = document.getElementById('zoomOutSpeedSlider');
+  zoomOutSpeedValue = document.getElementById('zoomOutSpeedValue');
+  zoomOutTargetSlider = document.getElementById('zoomOutTargetSlider');
+  zoomOutTargetValue = document.getElementById('zoomOutTargetValue');
+
+  if (zoomSlider && zoomValue) {
+    zoomSlider.addEventListener('input', function(e) {
+      const zoom = parseFloat(e.target.value);
+      map.setZoom(zoom);
+    });
+
+    map.on('zoom', function() {
+      const zoom = map.getZoom();
+      zoomSlider.value = zoom.toFixed(2);
+      zoomValue.textContent = zoom.toFixed(2);
+
+      if (isZoomOutAnimating && zoom <= zoomOutTarget) {
+        map.setZoom(zoomOutTarget);
+        stopZoomOutAnimation();
+      }
+    });
+  }
+
+  if (zoomOutSpeedSlider && zoomOutSpeedValue) {
+    zoomOutSpeedSlider.addEventListener('input', function(e) {
+      zoomOutSpeed = parseFloat(e.target.value);
+      zoomOutSpeedValue.textContent = zoomOutSpeed.toFixed(2);
+    });
+  }
+
+  if (zoomOutTargetSlider && zoomOutTargetValue) {
+    zoomOutTargetSlider.addEventListener('input', function(e) {
+      zoomOutTarget = parseFloat(e.target.value);
+      zoomOutTargetValue.textContent = zoomOutTarget.toFixed(2);
+    });
+  }
+
+  if (zoomOutPlayPauseBtn) {
+    zoomOutPlayPauseBtn.addEventListener('click', function() {
+      if (isZoomOutAnimating) {
+        stopZoomOutAnimation();
+        return;
+      }
+
+      if (zoomOutSpeed <= 0) {
+        return;
+      }
+
+      if (map.getZoom() <= zoomOutTarget) {
+        map.setZoom(zoomOutTarget);
+        return;
+      }
+
+      isZoomOutAnimating = true;
+      zoomOutPlayPauseBtn.textContent = 'Stop Zoom Out';
+      zoomOutPlayPauseBtn.classList.add('playing');
+      zoomOutLastFrameTime = Date.now();
+      animateZoomOut();
+    });
+  }
 
   playPauseBtn.addEventListener('click', function() {
     isPlaying = !isPlaying;
@@ -219,15 +317,17 @@ map.on('load', function() {
 
   resetBtn.addEventListener('click', function() {
     isPlaying = false;
+    stopZoomOutAnimation();
     playPauseBtn.textContent = 'Play';
     playPauseBtn.classList.remove('playing');
     currentYear = 1965;
     currentRotation = 0;
     currentPan = 0;
     document.getElementById('yearSlider').value = 1965;
-    document.getElementById('yearValue').textContent = 1965;
+    setYearDisplay(1965);
     map.setPitch(0);
     map.setBearing(0);
+    map.setZoom(0.25);
     const center = map.getCenter();
     map.jumpTo({center: [0, center.lat], duration: 0});
     pitchSlider.value = 0;
@@ -270,23 +370,25 @@ map.on('load', function() {
 
 });
 
+function setYearDisplay(year) {
+  const roundedYear = Math.round(year);
+  document.getElementById('yearValue').textContent = roundedYear;
+  document.getElementById('yearTickerValue').textContent = roundedYear;
+}
+
+function stopZoomOutAnimation() {
+  isZoomOutAnimating = false;
+  if (zoomOutPlayPauseBtn) {
+    zoomOutPlayPauseBtn.textContent = 'Start Zoom Out';
+    zoomOutPlayPauseBtn.classList.remove('playing');
+  }
+}
+
 // Function to update the map layer based on current year and type
 function updateMapLayer() {
   const roundedYear = Math.round(currentYear);
-  const propertyName = currentType + '_' + roundedYear;
-  
-  map.setPaintProperty('tuna-catch-fill', 'fill-color', [
-    'interpolate', ['linear'],
-    ['coalesce', ['get', propertyName], 0],
-    0,    ocean_color,
-    100,  '#FFD700',
-    500,  '#FF8C00',
-    1000, '#FF6347',
-    5000, '#DC143C',
-    10000,'#8B0000',
-    50000,'#660000',
-    100000,'#330000'
-  ]);
+  const valueExpr = getCountEquivalentExpression(currentType, roundedYear);
+  map.setPaintProperty('tuna-catch-fill', 'fill-color', getColorRampExpression(valueExpr));
 }
 
 // Function to update dataset
@@ -337,9 +439,46 @@ function animate() {
   // Update UI - set the rounded year
   const roundedYear = Math.round(currentYear);
   document.getElementById('yearSlider').value = roundedYear;
-  document.getElementById('yearValue').textContent = roundedYear;
+  setYearDisplay(roundedYear);
   updateMapLayer();
 
   requestAnimationFrame(animate);
+}
+
+function animateZoomOut() {
+  if (!isZoomOutAnimating) return;
+
+  const now = Date.now();
+  const deltaTime = (now - zoomOutLastFrameTime) / 1000;
+  zoomOutLastFrameTime = now;
+
+  const currentZoom = map.getZoom();
+  const remainingZoom = Math.max(0, currentZoom - zoomOutTarget);
+  const easeWindow = 1.5;
+  const easeRatio = Math.min(1, remainingZoom / easeWindow);
+  const speedScale = Math.max(0.12, easeRatio * easeRatio);
+  const effectiveZoomOutSpeed = zoomOutSpeed * speedScale;
+  const nextZoom = currentZoom - (effectiveZoomOutSpeed * deltaTime);
+
+  if (nextZoom <= zoomOutTarget) {
+    const center = map.getCenter();
+    map.jumpTo({
+      center: [center.lng, center.lat],
+      zoom: zoomOutTarget,
+      bearing: map.getBearing(),
+      pitch: map.getPitch()
+    });
+    stopZoomOutAnimation();
+    return;
+  }
+
+  const center = map.getCenter();
+  map.jumpTo({
+    center: [center.lng, center.lat],
+    zoom: nextZoom,
+    bearing: map.getBearing(),
+    pitch: map.getPitch()
+  });
+  requestAnimationFrame(animateZoomOut);
 }
 
