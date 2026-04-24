@@ -10,6 +10,34 @@
     <canvas id="fishCanvas"></canvas>
     <div class="info">
         <p id="zoomInfo">Zoom: 1.0x</p>
+        <div class="controls">
+            <div class="button-row">
+                <button id="playButton" type="button">Play</button>
+                <button id="resetButton" type="button">Reset</button>
+            </div>
+            <label for="zoomOutSpeed">Zoom Out Speed</label>
+            <input id="zoomOutSpeed" type="range" min="0.2" max="4" step="0.1" value="1.6">
+            <p id="zoomOutSpeedValue">1.6x</p>
+            <label class="checkbox-row" for="stopAtZoomEnabled">
+                <input id="stopAtZoomEnabled" type="checkbox">
+                Stop zoom-out at target
+            </label>
+            <label for="stopAtZoomLevel">Target zoom-out stop (%)</label>
+            <input id="stopAtZoomLevel" type="range" min="0" max="100" step="1" value="18">
+            <p id="stopAtZoomLevelValue">18%</p>
+            <label class="checkbox-row" for="showScaleBar">
+                <input id="showScaleBar" type="checkbox" checked>
+                Show fish scale bar
+            </label>
+            <label class="checkbox-row" for="showCenterBox">
+                <input id="showCenterBox" type="checkbox" checked>
+                Show center box
+            </label>
+            <label class="checkbox-row" for="showCenterReticle">
+                <input id="showCenterReticle" type="checkbox" checked>
+                Show center reticle
+            </label>
+        </div>
     </div>
     <script src="app.js"></script>
 </body>
