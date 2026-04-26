@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bluefin Tuna Import Streamgraph</title>
+    <link rel="stylesheet" href="styles.css">
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+</head>
+<body>
+    <div class="container">
+        <h1>Bluefin Tuna Over Time</h1>
+        <p class="subtitle">Volume (kg) by Country, 1989-2026</p>
+        <div class="controls">
+            <label for="data-select">Data source:</label>
+            <select id="data-select">
+                <option value="data/noaa_import_tunas_bluefin.csv" selected>NOAA imports (bluefin)</option>
+                <option value="data/GTA_FIRMs_tuna_cleaned_countries.csv">GTA FIRMs tuna (countries)</option>
+                <option value="data/toyosu_tuna_2023.csv">Toyosu tuna prices (line chart)</option>
+                <option value="data/toyosu_tuna_04-23.csv">Toyosu tuna prices (2004-2023)</option>
+                <option value="toyosu_multiline">Toyosu price by year (2004-2023, overlaid)</option>
+            </select>
+            <label class="checkbox-control" for="species-filter">
+                <input type="checkbox" id="species-filter">
+                GTA only: SBF / BFT / PBF
+            </label>
+            <label class="checkbox-control" for="toyosu-price-filter">
+                <input type="checkbox" id="toyosu-price-filter">
+                Toyosu only: prices under 20000 yen
+            </label>
+        </div>
+        <div id="chart"></div>
+        <div id="tooltip" class="tooltip" style="display: none;"></div>
+    </div>
+    <script src="main.js"></script>
+</body>
+</html>
