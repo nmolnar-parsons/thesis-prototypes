@@ -15,15 +15,18 @@
                 <button id="playButton" type="button">Play</button>
                 <button id="resetButton" type="button">Reset</button>
             </div>
+            <label for="manualZoom">Manual Zoom</label>
+            <input id="manualZoom" type="range" min="0.05" max="15" step="0.01" value="1">
+            <p id="manualZoomValue">1.0x</p>
             <label for="zoomOutSpeed">Zoom Out Speed</label>
             <input id="zoomOutSpeed" type="range" min="0.2" max="4" step="0.1" value="1.6">
             <p id="zoomOutSpeedValue">1.6x</p>
             <label class="checkbox-row" for="stopAtZoomEnabled">
-                <input id="stopAtZoomEnabled" type="checkbox">
+                <input id="stopAtZoomEnabled" type="checkbox" checked>
                 Stop zoom-out at target
             </label>
             <label for="stopAtZoomLevel">Target zoom-out stop (%)</label>
-            <input id="stopAtZoomLevel" type="range" min="0" max="100" step="1" value="18">
+            <input id="stopAtZoomLevel" type="range" min="0" max="100" step="0.1" value="18">
             <p id="stopAtZoomLevelValue">18%</p>
             <label class="checkbox-row" for="showScaleBar">
                 <input id="showScaleBar" type="checkbox" checked>
@@ -37,6 +40,26 @@
                 <input id="showCenterReticle" type="checkbox" checked>
                 Show center reticle
             </label>
+            <label class="checkbox-row" for="usePixelMode">
+                <input id="usePixelMode" type="checkbox" checked>
+                Pixel mode when zoomed out
+            </label>
+            <label class="checkbox-row" for="useGridLayout">
+                <input id="useGridLayout" type="checkbox">
+                Grid layout (instead of circular)
+            </label>
+            <label class="checkbox-row" for="invisibleYearLayout">
+                <input id="invisibleYearLayout" type="checkbox">
+                Invisible year ring layout
+            </label>
+            <button id="playYearAnimationButton" type="button">Play Year Animation</button>
+            <div class="section-divider"></div>
+            <p class="section-title">Background</p>
+            <div class="button-row">
+                <button id="bgGradientButton" type="button" class="bg-option active">Gradient</button>
+                <button id="bgImageButton" type="button" class="bg-option">Image</button>
+                <button id="bgVideoButton" type="button" class="bg-option">Video</button>
+            </div>
         </div>
     </div>
     <script src="app.js"></script>

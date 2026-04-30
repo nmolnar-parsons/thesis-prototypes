@@ -30,18 +30,19 @@ function getCountEquivalentExpression(type, year) {
 }
 
 function getColorRampExpression(valueExpr) {
-  return [
-    'interpolate', ['linear'],
-    valueExpr,
-    0,    ocean_color,
-    100,  '#FFD700',
-    500,  '#FF8C00',
-    1000, '#FF6347',
-    5000, '#DC143C',
-    10000,'#8B0000',
-    50000,'#660000',
-    100000,'#330000'
-  ];
+  // 10-step color scale: ocean_color for 0, then 9 steps from schemeYlOrRd
+  const colorScale = [ocean_color, ...d3.schemeYlOrRd[9]];
+  const breakpoints = [0, 50, 100, 250, 500, 1250, 2500, 6250, 12500, 31250, 100000];
+  
+  // Build interpolation array: ['interpolate', ['linear'], valueExpr, breakpoint1, color1, breakpoint2, color2, ...]
+  const interpolation = ['interpolate', ['linear'], valueExpr];
+  
+  for (let i = 0; i < colorScale.length; i++) {
+    interpolation.push(breakpoints[i]);
+    interpolation.push(colorScale[i]);
+  }
+  
+  return interpolation;
 }
 
 // Animation state
@@ -126,7 +127,7 @@ map.on('load', function() {
     'range': [1, 10],
     'color': 'rgba(186, 186, 163, 0)',      // Fully transparent lower atmosphere
     // 'high-color': 'rgba(0, 0, 0, 0)', // Fully transparent upper atmosphere
-    'space-color': 'rgb(0, 0, 0)', // Make space background transparent
+    // 'space-color': 'rgb(0, 0, 0)', // Make space background transparent
     'star-intensity': 0               // Remove stars
   });
 

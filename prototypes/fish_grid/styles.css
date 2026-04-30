@@ -76,6 +76,11 @@ body {
     background: rgba(255, 255, 255, 0.22);
 }
 
+.controls button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
 .controls label {
     font-size: 11px;
     opacity: 0.9;
@@ -102,4 +107,39 @@ body {
     font-size: 11px;
     opacity: 0.9;
     text-align: right;
+}
+
+#manualZoom {
+    width: 100%;
+}
+
+#manualZoomValue {
+    margin: 0;
+    font-size: 11px;
+    opacity: 0.9;
+    text-align: right;
+}
+
+.section-divider {
+    height: 1px;
+    background: rgba(255, 255, 255, 0.2);
+    margin: 8px 0;
+}
+
+.section-title {
+    margin: 0;
+    font-size: 11px;
+    font-weight: bold;
+    opacity: 0.8;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.controls .bg-option {
+    flex: 1;
+}
+
+.controls .bg-option.active {
+    background: rgba(100, 200, 255, 0.3);
+    border-color: rgba(100, 200, 255, 0.8);
 }

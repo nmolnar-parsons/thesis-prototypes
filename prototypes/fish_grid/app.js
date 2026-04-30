@@ -12,11 +12,19 @@ const stopAtZoomLevelValue = document.getElementById('stopAtZoomLevelValue');
 const showScaleBarCheckbox = document.getElementById('showScaleBar');
 const showCenterBoxCheckbox = document.getElementById('showCenterBox');
 const showCenterReticleCheckbox = document.getElementById('showCenterReticle');
+const usePixelModeCheckbox = document.getElementById('usePixelMode');
+const useGridLayoutCheckbox = document.getElementById('useGridLayout');
+const bgGradientButton = document.getElementById('bgGradientButton');
+const bgImageButton = document.getElementById('bgImageButton');
+const bgVideoButton = document.getElementById('bgVideoButton');
+const manualZoomSlider = document.getElementById('manualZoom');
+const manualZoomValue = document.getElementById('manualZoomValue');
+const invisibleYearLayoutCheckbox = document.getElementById('invisibleYearLayout');
+const playYearAnimationButton = document.getElementById('playYearAnimationButton');
 
 // State
 let fishData = [];
 let fishImage = null;
-let lowResFishImage = null;
 let zoom = 1;
 let panX = 0;
 let panY = 0;
@@ -36,19 +44,23 @@ let stopAtZoomPercent = parseFloat(stopAtZoomLevelSlider ? stopAtZoomLevelSlider
 let showScaleBar = showScaleBarCheckbox ? showScaleBarCheckbox.checked : true;
 let showCenterBox = showCenterBoxCheckbox ? showCenterBoxCheckbox.checked : true;
 let showCenterReticle = showCenterReticleCheckbox ? showCenterReticleCheckbox.checked : true;
+let usePixelMode = usePixelModeCheckbox ? usePixelModeCheckbox.checked : false;
+let useGridLayout = useGridLayoutCheckbox ? useGridLayoutCheckbox.checked : false;
 let floorColor = '#336132';
+let backgroundMode = 'gradient'; // 'gradient', 'image', or 'video'
+let invisibleYearLayout = invisibleYearLayoutCheckbox ? invisibleYearLayoutCheckbox.checked : false;
+let yearFadeOpacity = 1; // 0-1, controls visibility of year rings
+let isPlayingSecondStage = false; // Whether second stage animation is active
+let yearFadeStartTime = 0;
+const YEAR_FADE_DURATION_MS = 2000;
 
 // Configuration
 const FISH_IMAGE_HEIGHT = 16; // Short side of the rendered fish before rotation
-const PIXEL_SIZE = 2; // Base size of the pixel-art unit at low zoom
-const CONTAINER_PADDING = 12;
-const FISH_GAP = 3.5;
-const PIXEL_GAP = 1;
-const GRID_COLS = 12;
 const ZOOM_SPEED = 0.04;
 const ZOOM_MIN = 0.05;
 const ZOOM_MAX = 15;
 const ZOOM_THRESHOLD = 1.0; // Threshold for switching between zoom modes
+const PIXEL_MODE_ZOOM_THRESHOLD = 0.3; // Zoom level at which to switch to pixel mode
 const AUTO_ZOOM_IN_RATE = 0.012;
 const AUTO_ZOOM_OUT_RATE = 0.006;
 const AUTO_ZOOM_MIN = 0.05;
@@ -56,31 +68,15 @@ const AUTO_ZOOM_MAX = 3.2;
 const ZOOM_STOP_SNAP_THRESHOLD = 0.002;
 const ISOLATION_FADE_IN_DURATION_MS = 5000;
 const ISOLATION_OTHER_ALPHA_MULTIPLIER = 0;
-const FISH_LAYOUT_ROWS = [
-    { count: 0, gap: 0, xShift: 0 },
-    { count: 0, gap: 24, xShift: 0 },
-    { count: 4, gap: 18, xShift: 0 },
-    { count: 6, gap: 14, xShift: 0 },
-    { count: 8, gap: 12, xShift: 0 },
-    { count: 9, gap: 10, xShift: 0 },
-    { count: 8, gap: 10, xShift: 1 },
-    { count: 5, gap: 12, xShift: 2 },
-    { count: 4, gap: 12, xShift: 3 },
-    { count: 4, gap: 12, xShift: 4 },
-    { count: 4, gap: 12, xShift: 5 },
-    { count: 4, gap: 12, xShift: 5 },
-];
 
 // Computed values
-let containerDimensions = []; // Array of {width, height, x, y, cols, rows} for each week
+let fishPositions = []; // Array of {x, y, weekNumber, fishIndex, circleIndex}
 let layoutBounds = { width: 0, height: 0 };
 let fishAspectRatio = 1;
 let fishRenderWidth = 16;
 let fishRenderHeight = FISH_IMAGE_HEIGHT;
-let fishFootprintWidth = FISH_IMAGE_HEIGHT;
-let fishFootprintHeight = 16;
-let pixelFootprintWidth = 16;
-let pixelFootprintHeight = 16 * 2.5;
+let centerCanvasX = 0;
+let centerCanvasY = 0;
 
 // Initialize
 async function init() {
@@ -90,7 +86,6 @@ async function init() {
     
     // Load image
     fishImage = await loadImage('fish-image/pacific-bluefin.png');
-    lowResFishImage = await loadImage('fish-image/low-res.png');
     configureFishGeometry();
     
     // Load and parse CSV
@@ -122,10 +117,30 @@ async function init() {
     if (showCenterReticleCheckbox) {
         showCenterReticleCheckbox.addEventListener('change', handleCenterReticleToggleChange);
     }
+    if (usePixelModeCheckbox) {
+        usePixelModeCheckbox.addEventListener('change', handlePixelModeToggleChange);
+    }
+    if (useGridLayoutCheckbox) {
+        useGridLayoutCheckbox.addEventListener('change', handleGridLayoutToggleChange);
+    }
+
+    bgGradientButton.addEventListener('click', handleBgGradientClick);
+    bgImageButton.addEventListener('click', handleBgImageClick);
+    bgVideoButton.addEventListener('click', handleBgVideoClick);
+
+    manualZoomSlider.addEventListener('input', handleManualZoomChange);
+
+    if (invisibleYearLayoutCheckbox) {
+        invisibleYearLayoutCheckbox.addEventListener('change', handleInvisibleYearLayoutChange);
+    }
+    playYearAnimationButton.addEventListener('click', handlePlayYearAnimation);
 
     updatePlaybackUI();
     updateSpeedLabel();
     updateStopAtZoomLabel();
+    
+    // Initialize button states
+    playYearAnimationButton.disabled = !invisibleYearLayout;
     
     // Start animation loop
     animate();
@@ -143,6 +158,31 @@ function refreshFloorColor() {
     floorColor = cssFloorColor || '#336132';
 }
 
+function drawBackground() {
+    if (backgroundMode === 'gradient') {
+        drawGradientBackground();
+    } else {
+        // Fallback to solid color for image/video modes (not implemented yet)
+        ctx.fillStyle = floorColor;
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+    }
+}
+
+function drawGradientBackground() {
+    // Create a subtle ocean blue gradient from lighter at top to darker at bottom
+    const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+    
+    // Subtle gradient: light ocean blue at top, darker ocean blue at bottom
+    const lightBlue = '#276aa4';   // Lighter ocean blue
+    const darkBlue = '#092142';    // Darker ocean blue
+    
+    gradient.addColorStop(0, lightBlue);
+    gradient.addColorStop(1, darkBlue);
+    
+    ctx.fillStyle = gradient;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+}
+
 function loadImage(src) {
     return new Promise((resolve, reject) => {
         const img = new Image();
@@ -156,10 +196,6 @@ function configureFishGeometry() {
     fishAspectRatio = fishImage.naturalWidth / fishImage.naturalHeight;
     fishRenderHeight = FISH_IMAGE_HEIGHT;
     fishRenderWidth = Math.max(4, fishRenderHeight * fishAspectRatio);
-    fishFootprintWidth = fishRenderHeight;
-    fishFootprintHeight = fishRenderWidth;
-    pixelFootprintWidth = fishFootprintWidth;
-    pixelFootprintHeight = fishFootprintHeight;
 }
 
 function parseCSV(csvText) {
@@ -188,66 +224,305 @@ function parseCSV(csvText) {
 }
 
 function calculateLayout() {
-    // Calculate container dimensions based on fish count so every fish has room at high zoom
-    containerDimensions = [];
-    layoutBounds = { width: 0, height: 0 };
+    if (useGridLayout) {
+        calculateGridLayout();
+    } else {
+        calculateCircularLayout();
+    }
+    centerLayout();
+}
 
-    const layoutRows = [];
-    let weekIndex = 0;
+function calculateCircularLayout() {
+    fishPositions = [];
+    centerCanvasX = 0;
+    centerCanvasY = 0;
 
-    FISH_LAYOUT_ROWS.forEach((rowConfig) => {
-        const rowWeeks = fishData.slice(weekIndex, weekIndex + rowConfig.count);
-        weekIndex += rowConfig.count;
+    if (fishData.length === 0) return;
 
-        const rowContainers = rowWeeks.map((week) => {
-            const contentCount = Math.max(1, week.approx_fish_count);
-            const cols = Math.ceil(Math.sqrt(contentCount));
-            const rows = Math.ceil(contentCount / cols);
-            const width = CONTAINER_PADDING * 2 + cols * fishFootprintWidth + Math.max(0, cols - 1) * FISH_GAP;
-            const height = CONTAINER_PADDING * 2 + rows * fishFootprintHeight + Math.max(0, rows - 1) * FISH_GAP;
+    const SPACING_MULTIPLIER = 1.6; // Spacing between fish along circle
+    const baseRadius = 100;
+    const ringGap = 40; // Distance between rings
 
-            return {
-                week: week,
-                width: width,
-                height: height,
-                cols: cols,
-                rows: rows
-            };
-        });
-
-        const rowWidth = rowContainers.reduce((sum, container) => sum + container.width, 0) + Math.max(0, rowContainers.length - 1) * rowConfig.gap;
-        const rowHeight = rowContainers.reduce((maxHeight, container) => Math.max(maxHeight, container.height), 0);
-
-        layoutRows.push({ rowContainers, rowWidth, rowHeight, gap: rowConfig.gap, xShift: rowConfig.xShift || 0 });
+    // Place center fish - pointing upwards
+    fishPositions.push({ 
+        x: 0, y: 0, 
+        weekNumber: fishData[0].week_number, 
+        fishIndex: 0, 
+        angle: -Math.PI / 2,
+        circleIndex: 0 
     });
 
-    layoutBounds.width = layoutRows.reduce((maxWidth, row) => Math.max(maxWidth, row.rowWidth + (row.xShift * 18)), 0);
+    // Helper function to place fish in concentric rings
+    function placeRingSet(fishGroups, startRadiusMultiplier, isLastGroup = false, ringSetType = 'week') {
+        let totalFish = fishGroups.reduce((sum, g) => sum + g.count, 0);
+        if (totalFish === 0) return;
 
-    let y = 0;
-    layoutRows.forEach((row) => {
-        const xStart = (layoutBounds.width - row.rowWidth) / 2 + (row.xShift || 0) * 18;
-        let x = xStart;
+        let fishPlaced = 0;
+        let currentRing = 0;
+        let maxRings = Math.ceil(totalFish / 100); // Prevent infinite loops
 
-        row.rowContainers.forEach((container) => {
-            containerDimensions.push({
-                ...container,
-                x: x,
-                y: y
+        while (fishPlaced < totalFish && currentRing < maxRings) {
+            const currentRadius = baseRadius + startRadiusMultiplier * ringGap + currentRing * ringGap;
+            const circumference = 2 * Math.PI * currentRadius;
+            const maxFishInRing = Math.floor(circumference / (fishRenderHeight * SPACING_MULTIPLIER));
+            
+            if (maxFishInRing === 0) break;
+
+            // Place fish in this ring
+            let fishInThisRing = Math.min(maxFishInRing, totalFish - fishPlaced);
+            let isFinalRing = (fishInThisRing < maxFishInRing);
+            
+            for (let i = 0; i < fishInThisRing; i++) {
+                let angle;
+                
+                // Use 180-degree arc for final rings of month/year groups, or for incomplete rings
+                if ((isFinalRing && fishInThisRing < maxFishInRing) || (isLastGroup && isFinalRing)) {
+                    // Line up from left side over the top to right side, using 180-degree arc
+                    angle = -Math.PI + (i / Math.max(1, fishInThisRing - 1)) * Math.PI;
+                } else {
+                    // Distribute evenly around full rings
+                    angle = (i / fishInThisRing) * Math.PI * 2;
+                }
+                
+                const x = Math.cos(angle) * currentRadius;
+                const y = Math.sin(angle) * currentRadius;
+                
+                // Fish angle points inward (towards center), rotated 180 degrees from the radial angle
+                const fishAngle = angle + Math.PI;
+
+                // Determine which group this fish belongs to
+                let groupIdx = 0;
+                let fishInGroupCount = 0;
+                let countSoFar = 0;
+
+                for (let g = 0; g < fishGroups.length; g++) {
+                    if (countSoFar + fishGroups[g].count > fishPlaced) {
+                        groupIdx = g;
+                        fishInGroupCount = fishPlaced - countSoFar;
+                        break;
+                    }
+                    countSoFar += fishGroups[g].count;
+                }
+
+                const group = fishGroups[groupIdx];
+                fishPositions.push({
+                    x: x,
+                    y: y,
+                    weekNumber: group.weekNumber,
+                    fishIndex: fishInGroupCount,
+                    angle: fishAngle,
+                    circleIndex: groupIdx + 1,
+                    ringSetType: ringSetType
+                });
+
+                fishPlaced++;
+            }
+
+            currentRing++;
+        }
+    }
+
+    // Organize fish by circle type
+    const weekFish = [];
+    if (fishData[0].approx_fish_count > 1) {
+        weekFish.push({
+            weekNumber: fishData[0].week_number,
+            count: fishData[0].approx_fish_count - 1 // Exclude center fish
+        });
+    }
+
+    const monthFish = [];
+    const yearFish = [];
+    
+    // Calculate how many month fish can fit in a single ring
+    const monthRingRadiusMultiplier = weekFish.length > 0 ? 4 : 1;
+    const monthRingRadius = baseRadius + monthRingRadiusMultiplier * ringGap;
+    const monthRingCircumference = 2 * Math.PI * monthRingRadius;
+    const maxMonthFishInRing = Math.floor(monthRingCircumference / (fishRenderHeight * SPACING_MULTIPLIER));
+    
+    // Collect month data (indices 1-3) and year data (indices 4+)
+    let monthFishCount = 0;
+    let monthDataExhausted = false;
+    
+    for (let i = 1; i < fishData.length; i++) {
+        const count = fishData[i].approx_fish_count;
+        
+        // If we haven't exhausted month data and this is still month data (indices 1-3)
+        if (!monthDataExhausted && i < 4 && monthFishCount + count <= maxMonthFishInRing) {
+            monthFish.push({
+                weekNumber: fishData[i].week_number,
+                count: count
             });
+            monthFishCount += count;
+        } else {
+            // Everything else goes to year ring
+            monthDataExhausted = true;
+            yearFish.push({
+                weekNumber: fishData[i].week_number,
+                count: count
+            });
+        }
+    }
 
-            x += container.width + row.gap;
-        });
+    // Remove old yearFish loop since we handle it above
 
-        layoutBounds.height = y + row.rowHeight;
-        y += row.rowHeight + 14;
+    // Place each ring set
+    if (weekFish.length > 0) {
+        placeRingSet(weekFish, 1, false, 'week');
+    }
+    if (monthFish.length > 0) {
+        placeRingSet(monthFish, weekFish.length > 0 ? 4 : 1, false, 'month');
+    }
+    if (yearFish.length > 0) {
+        const yearStartMultiplier = (weekFish.length > 0 ? 4 : 1) + (monthFish.length > 0 ? (invisibleYearLayout ? 0 : 20) : 0);
+        placeRingSet(yearFish, yearStartMultiplier, true, 'year');
+    }
+
+    // Calculate bounds
+    let minX = 0, maxX = 0, minY = 0, maxY = 0;
+    fishPositions.forEach(fish => {
+        minX = Math.min(minX, fish.x - fishRenderWidth);
+        maxX = Math.max(maxX, fish.x + fishRenderWidth);
+        minY = Math.min(minY, fish.y - fishRenderHeight);
+        maxY = Math.max(maxY, fish.y + fishRenderHeight);
     });
+
+    layoutBounds.width = maxX - minX;
+    layoutBounds.height = maxY - minY;
+}
+
+function calculateGridLayout() {
+    fishPositions = [];
+    centerCanvasX = 0;
+    centerCanvasY = 0;
+
+    if (fishData.length === 0) return;
+
+    // Collect fish by group
+    const centerFish = {
+        weekNumber: fishData[0].week_number,
+        fishIndex: 0
+    };
+
+    const monthFish = [];
+    for (let i = 1; i < Math.min(4, fishData.length); i++) {
+        for (let j = 0; j < fishData[i].approx_fish_count; j++) {
+            monthFish.push({
+                weekNumber: fishData[i].week_number,
+                fishIndex: j
+            });
+        }
+    }
+
+    const yearFish = [];
+    for (let i = 4; i < fishData.length; i++) {
+        for (let j = 0; j < fishData[i].approx_fish_count; j++) {
+            yearFish.push({
+                weekNumber: fishData[i].week_number,
+                fishIndex: j
+            });
+        }
+    }
+
+    const FISH_SPACING = 2;
+    const cellWidth = fishRenderWidth + FISH_SPACING;
+    const cellHeight = fishRenderHeight + FISH_SPACING;
+    const GROUP_GAP = 30; // Spacing between groups
+    
+    // Target aspect ratio: 8:15 (width:height)
+    const ASPECT_RATIO = 8 / 15;
+    
+    // Helper function to calculate grid dimensions for a given number of items
+    const calculateGridDims = (itemCount) => {
+        if (itemCount === 0) return { cols: 0, rows: 0 };
+        const cols = Math.ceil(Math.sqrt(itemCount * ASPECT_RATIO));
+        const rows = Math.ceil(itemCount / cols);
+        return { cols, rows };
+    };
+
+    // Calculate dimensions for each group
+    const centerDims = { cols: 1, rows: 1 }; // Single fish
+    const monthDims = calculateGridDims(monthFish.length);
+    const yearDims = calculateGridDims(yearFish.length);
+
+    let currentY = 0;
+
+    // Place center fish
+    fishPositions.push({
+        x: 0,
+        y: currentY,
+        weekNumber: centerFish.weekNumber,
+        fishIndex: centerFish.fishIndex,
+        angle: -Math.PI / 2, // Point upward
+        circleIndex: 0
+    });
+
+    currentY += centerDims.rows * cellHeight + GROUP_GAP;
+
+    // Place month fish
+    monthFish.forEach((fish, index) => {
+        const row = Math.floor(index / monthDims.cols);
+        const col = index % monthDims.cols;
+        const x = col * cellWidth;
+        const y = currentY + row * cellHeight;
+
+        fishPositions.push({
+            x: x,
+            y: y,
+            weekNumber: fish.weekNumber,
+            fishIndex: fish.fishIndex,
+            angle: -Math.PI / 2, // Point upward
+            circleIndex: 1
+        });
+    });
+
+    currentY += monthDims.rows * cellHeight + GROUP_GAP;
+
+    // Place year fish
+    yearFish.forEach((fish, index) => {
+        const row = Math.floor(index / yearDims.cols);
+        const col = index % yearDims.cols;
+        const x = col * cellWidth;
+        const y = currentY + row * cellHeight;
+
+        fishPositions.push({
+            x: x,
+            y: y,
+            weekNumber: fish.weekNumber,
+            fishIndex: fish.fishIndex,
+            angle: -Math.PI / 2, // Point upward
+            circleIndex: 2
+        });
+    });
+
+    // Calculate bounds
+    let minX = 0, maxX = 0, minY = 0, maxY = 0;
+    fishPositions.forEach(fish => {
+        minX = Math.min(minX, fish.x - fishRenderWidth / 2);
+        maxX = Math.max(maxX, fish.x + fishRenderWidth / 2);
+        minY = Math.min(minY, fish.y - fishRenderHeight / 2);
+        maxY = Math.max(maxY, fish.y + fishRenderHeight / 2);
+    });
+
+    layoutBounds.width = maxX - minX;
+    layoutBounds.height = maxY - minY;
 }
 
 function centerLayout() {
-    if (layoutBounds.width === 0 || layoutBounds.height === 0) return;
-
-    panX = (canvas.width - layoutBounds.width) / 2;
-    panY = (canvas.height - layoutBounds.height) / 2;
+    if (useGridLayout) {
+        // For grid layout, zoom from top-left corner
+        centerCanvasX = 0;
+        centerCanvasY = 0;
+        panX = 100; // Offset to show content
+        panY = 100;
+    } else {
+        // For circular layout, zoom from center
+        // Round to ensure exact pixel alignment for the center fish at world (0, 0)
+        centerCanvasX = Math.round(canvas.width / 2);
+        centerCanvasY = Math.round(canvas.height / 2);
+        panX = centerCanvasX;
+        panY = centerCanvasY;
+    }
 }
 
 function handleZoom(e) {
@@ -303,15 +578,22 @@ function handleDragEnd(e) {
 
 function animate() {
     updateIsolationFade();
+    updateSecondStageAnimation();
     applyAutoZoomStep();
 
-    ctx.fillStyle = floorColor;
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    drawBackground();
+    
+    // Disable image smoothing at low zoom to reduce shimmering
+    ctx.imageSmoothingEnabled = zoom > PIXEL_MODE_ZOOM_THRESHOLD;
     
     ctx.save();
     
-    // Apply pan and zoom
-    ctx.translate(panX, panY);
+    // Apply pan and zoom - round coordinates at low zoom to avoid sub-pixel shimmer
+    if (zoom < PIXEL_MODE_ZOOM_THRESHOLD) {
+        ctx.translate(Math.round(panX), Math.round(panY));
+    } else {
+        ctx.translate(panX, panY);
+    }
     ctx.scale(zoom, zoom);
     
     // Draw grid
@@ -333,79 +615,49 @@ function animate() {
 }
 
 function drawFishGrid() {
-    if (!fishImage || fishData.length === 0) return;
+    if (!fishImage || fishPositions.length === 0) return;
     
-    const isZoomedIn = zoom > ZOOM_THRESHOLD;
-    
-    containerDimensions.forEach((container) => {
-        const x = container.x;
-        const y = container.y;
-        const width = container.width;
-        const height = container.height;
-        const week = container.week;
+    // Draw all fish at their circular positions
+    fishPositions.forEach((fishPos) => {
+        const fishKey = getFishKey(fishPos.weekNumber, fishPos.fishIndex);
         
-        if (isZoomedIn) {
-            drawZoomedInWeek(x, y, width, height, week);
-        } else {
-            drawZoomedOutWeek(x, y, width, height, week);
+        let alpha = getFishAlpha(fishKey, 0.85);
+        
+        // Apply year fade opacity in invisible year layout mode
+        if (invisibleYearLayout && fishPos.ringSetType === 'year') {
+            alpha *= yearFadeOpacity;
         }
+        
+        ctx.globalAlpha = alpha;
+        
+        // Use pixel mode when zoomed out and option is enabled, or always in grid layout when zoomed out
+        const shouldUsePixelMode = (usePixelMode && zoom < PIXEL_MODE_ZOOM_THRESHOLD) || (useGridLayout && zoom < 0.8);
+        if (shouldUsePixelMode) {
+            drawPixel(fishPos.x, fishPos.y, fishPos.angle);
+        } else {
+            drawRotatedFish(fishImage, fishPos.x, fishPos.y, fishRenderWidth, fishRenderHeight, fishPos.angle);
+        }
+        
+        ctx.globalAlpha = 1;
     });
-}
-
-function drawZoomedInWeek(x, y, width, height, week) {
-    // Draw individual fish for each fish in the count
-    const fishCount = week.approx_fish_count;
-    const cols = Math.max(1, Math.ceil(Math.sqrt(fishCount)));
-    
-    for (let i = 0; i < fishCount; i++) {
-        const col = i % cols;
-        const row = Math.floor(i / cols);
-        const fishKey = getFishKey(week.week_number, i);
-        
-        const fishX = x + CONTAINER_PADDING + col * (fishFootprintWidth + FISH_GAP);
-        const fishY = y + CONTAINER_PADDING + row * (fishFootprintHeight + FISH_GAP);
-        
-        ctx.globalAlpha = getFishAlpha(fishKey, 0.85);
-        drawRotatedFish(fishImage, fishX, fishY, fishRenderWidth, fishRenderHeight, -Math.PI / 2);
-        ctx.globalAlpha = 1;
-    }
-    
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.55)';
-    ctx.font = 'bold 9px sans-serif';
-    ctx.textAlign = 'center';
-}
-
-function drawZoomedOutWeek(x, y, width, height, week) {
-    const fishCount = week.approx_fish_count;
-    const cols = Math.max(1, week.cols || Math.ceil(Math.sqrt(fishCount)));
-    const intensity = fishCount / Math.max(...fishData.map(d => d.approx_fish_count));
-    
-    for (let i = 0; i < fishCount; i++) {
-        const col = i % cols;
-        const row = Math.floor(i / cols);
-        const fishKey = getFishKey(week.week_number, i);
-        
-        const pixelX = x + CONTAINER_PADDING + col * (pixelFootprintWidth + FISH_GAP);
-        const pixelY = y + CONTAINER_PADDING + row * (pixelFootprintHeight + FISH_GAP);
-
-        ctx.globalAlpha = getFishAlpha(fishKey, 0.9);
-        drawRotatedFish(lowResFishImage, pixelX, pixelY, fishRenderWidth, fishRenderHeight, -Math.PI / 2);
-        ctx.globalAlpha = 1;
-    }
-    
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.45)';
-    ctx.font = 'bold 8px sans-serif';
-    ctx.textAlign = 'center';
 }
 
 function drawRotatedFish(img, x, y, width, height, angle) {
     // Save the current context state
     ctx.save();
     
-    // Translate to the center of where the fish will be drawn
-    ctx.translate(x + width / 2, y + height / 2);
+    // Round coordinates at very low zoom to reduce shimmering
+    let drawX = x;
+    let drawY = y;
+    if (zoom < 0.3) {
+        drawX = Math.round(x);
+        drawY = Math.round(y);
+    }
     
-    // Rotate by the angle (90 degrees = Math.PI / 2)
+    // Translate to the position where the fish will be drawn (center of fish)
+    ctx.translate(drawX, drawY);
+    
+    // Rotate by the angle (fish faces the given direction)
     ctx.rotate(angle);
     
     // Draw the image centered at origin
@@ -415,11 +667,45 @@ function drawRotatedFish(img, x, y, width, height, angle) {
     ctx.restore();
 }
 
+function drawPixel(x, y, angle) {
+    // Save the current context state
+    ctx.save();
+    
+    // Translate to the position where the pixel will be drawn (center of fish)
+    ctx.translate(x, y);
+    
+    // Rotate by the angle (same as fish)
+    ctx.rotate(angle);
+    
+    // Draw simple white pixels shaped like a simplified fish
+    ctx.fillStyle = 'rgba(255, 255, 255, 1)';
+    
+    // Create a simplified fish shape with rectangular pixels
+    const pixelSize = fishRenderHeight * 0.25;
+    
+    // Main body (center)
+    ctx.fillRect(-fishRenderWidth * 0.35, -pixelSize * 0.5, fishRenderWidth * 0.5, pixelSize);
+    
+    // Side fins (add width/fatness)
+    const sideWidth = pixelSize * 5;
+    ctx.fillRect(-fishRenderWidth * 0.35, -pixelSize * 0.35, sideWidth, pixelSize * 0.7);
+    ctx.fillRect(-fishRenderWidth * 0.35, pixelSize * 0.15, sideWidth, pixelSize * 0.7);
+    
+    // Head (point to the right when not rotated)
+    ctx.fillRect(fishRenderWidth * 0.15, -pixelSize * 0.6, pixelSize * 0.8, pixelSize * 0.6);
+    
+    // Tail (point to the left when not rotated)
+    ctx.fillRect(-fishRenderWidth * 0.35, -pixelSize * 0.8, pixelSize * 0.6, pixelSize * 1.6);
+    
+    // Restore the context state
+    ctx.restore();
+}
+
 function updateInfo() {
     const displayZoom = (zoom * 100).toFixed(0);
-    const hoveredWeek = getWeekAtMouse();
-    const weekInfo = hoveredWeek ? `Week ${hoveredWeek.week_number}: ${hoveredWeek.approx_fish_count} fish` : 'Hover over weeks for info';
     zoomInfo.textContent = `Zoom: ${displayZoom}% ${isAutoZoomPlaying ? '[playing]' : '[paused]'}`;
+    manualZoomSlider.value = zoom;
+    manualZoomValue.textContent = `${zoom.toFixed(2)}x`;
 }
 
 function toggleAutoZoomPlayback() {
@@ -449,7 +735,6 @@ function resetView() {
     isAutoZoomPlaying = false;
     pendingPlayAfterFadeIn = false;
     clearFishIsolation();
-    zoom = 1;
     autoZoomDirection = 1;
     centerLayout();
     updatePlaybackUI();
@@ -497,6 +782,86 @@ function handleCenterReticleToggleChange() {
     showCenterReticle = !!showCenterReticleCheckbox.checked;
 }
 
+function handlePixelModeToggleChange() {
+    usePixelMode = !!usePixelModeCheckbox.checked;
+}
+
+function handleGridLayoutToggleChange() {
+    useGridLayout = !!useGridLayoutCheckbox.checked;
+    calculateLayout();
+    resetView();
+}
+
+function handleInvisibleYearLayoutChange() {
+    invisibleYearLayout = !!invisibleYearLayoutCheckbox.checked;
+    if (invisibleYearLayout) {
+        yearFadeOpacity = 0; // Start invisible
+        playYearAnimationButton.disabled = false;
+    } else {
+        yearFadeOpacity = 1; // Make visible
+        playYearAnimationButton.disabled = true;
+    }
+    calculateLayout();
+    resetView();
+}
+
+function handlePlayYearAnimation() {
+    if (!invisibleYearLayout) return; // Only works in invisible year layout mode
+    
+    isAutoZoomPlaying = false;
+    updatePlaybackUI();
+    isPlayingSecondStage = true;
+    yearFadeStartTime = performance.now();
+    yearFadeOpacity = 0;
+}
+
+function updateSecondStageAnimation() {
+    if (!isPlayingSecondStage) return;
+    
+    const elapsed = performance.now() - yearFadeStartTime;
+    
+    if (elapsed < YEAR_FADE_DURATION_MS) {
+        // Fade in the year rings
+        yearFadeOpacity = elapsed / YEAR_FADE_DURATION_MS;
+    } else {
+        // Fade complete, start zoom out animation
+        yearFadeOpacity = 1;
+        isPlayingSecondStage = false;
+        isAutoZoomPlaying = true;
+        autoZoomDirection = -1;
+        updatePlaybackUI();
+    }
+}
+
+function handleBgGradientClick() {
+    backgroundMode = 'gradient';
+    updateBgButtonUI();
+}
+
+function handleBgImageClick() {
+    backgroundMode = 'image';
+    updateBgButtonUI();
+    // TODO: Implement image background
+}
+
+function handleBgVideoClick() {
+    backgroundMode = 'video';
+    updateBgButtonUI();
+    // TODO: Implement video background
+}
+
+function updateBgButtonUI() {
+    bgGradientButton.classList.toggle('active', backgroundMode === 'gradient');
+    bgImageButton.classList.toggle('active', backgroundMode === 'image');
+    bgVideoButton.classList.toggle('active', backgroundMode === 'video');
+}
+
+function handleManualZoomChange() {
+    isAutoZoomPlaying = false;
+    updatePlaybackUI();
+    zoom = parseFloat(manualZoomSlider.value) || 1;
+}
+
 function drawCenterBoxOverlay() {
     if (!showCenterBox) {
         return;
@@ -514,6 +879,18 @@ function drawCenterBoxOverlay() {
     ctx.strokeStyle = 'rgba(0, 0, 0, 0.5)';
     ctx.lineWidth = 1;
     ctx.strokeRect(boxX, boxY, boxWidth, boxHeight);
+
+    // Draw smaller box 1/4 of the way up the center box
+    const smallBoxWidth = 400;
+    const smallBoxHeight = 100;
+    const smallBoxX = centerX - smallBoxWidth / 2;
+    const smallBoxY = boxY + boxHeight * 0.75 - smallBoxHeight / 2;
+
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.15)';
+    ctx.fillRect(smallBoxX, smallBoxY, smallBoxWidth, smallBoxHeight);
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.4)';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(smallBoxX, smallBoxY, smallBoxWidth, smallBoxHeight);
 }
 
 function drawCenterReticleOverlay() {
@@ -659,24 +1036,14 @@ function drawSelectedFishScaleBar() {
 }
 
 function getFishPlacementByKey(targetKey) {
-    for (let c = 0; c < containerDimensions.length; c++) {
-        const container = containerDimensions[c];
-        const fishCount = container.week.approx_fish_count;
-        const cols = Math.max(1, container.cols || Math.ceil(Math.sqrt(fishCount)));
-
-        for (let i = 0; i < fishCount; i++) {
-            const key = getFishKey(container.week.week_number, i);
-            if (key !== targetKey) continue;
-
-            const col = i % cols;
-            const row = Math.floor(i / cols);
-            const fishX = container.x + CONTAINER_PADDING + col * (fishFootprintWidth + FISH_GAP);
-            const fishY = container.y + CONTAINER_PADDING + row * (fishFootprintHeight + FISH_GAP);
-
-            return { fishX, fishY };
+    for (let i = 0; i < fishPositions.length; i++) {
+        const fish = fishPositions[i];
+        const key = getFishKey(fish.weekNumber, fish.fishIndex);
+        
+        if (key === targetKey) {
+            return { fishX: fish.x, fishY: fish.y };
         }
     }
-
     return null;
 }
 
@@ -687,30 +1054,23 @@ function getFishAtScreenPoint(screenX, screenY) {
     const worldX = (canvasX - panX) / zoom;
     const worldY = (canvasY - panY) / zoom;
 
-    for (let c = 0; c < containerDimensions.length; c++) {
-        const container = containerDimensions[c];
-        const fishCount = container.week.approx_fish_count;
-        const cols = Math.max(1, container.cols || Math.ceil(Math.sqrt(fishCount)));
+    for (let i = 0; i < fishPositions.length; i++) {
+        const fish = fishPositions[i];
+        const fishX = fish.x;
+        const fishY = fish.y;
+        const rotatedOffset = (fishRenderWidth - fishRenderHeight) / 2;
+        const hitX = fishX + rotatedOffset;
+        const hitY = fishY - rotatedOffset;
+        const hitWidth = fishRenderHeight;
+        const hitHeight = fishRenderWidth;
 
-        for (let i = 0; i < fishCount; i++) {
-            const col = i % cols;
-            const row = Math.floor(i / cols);
-            const fishX = container.x + CONTAINER_PADDING + col * (fishFootprintWidth + FISH_GAP);
-            const fishY = container.y + CONTAINER_PADDING + row * (fishFootprintHeight + FISH_GAP);
-            const rotatedOffset = (fishRenderWidth - fishRenderHeight) / 2;
-            const hitX = fishX + rotatedOffset;
-            const hitY = fishY - rotatedOffset;
-            const hitWidth = fishRenderHeight;
-            const hitHeight = fishRenderWidth;
-
-            if (
-                worldX >= hitX &&
-                worldX <= hitX + hitWidth &&
-                worldY >= hitY &&
-                worldY <= hitY + hitHeight
-            ) {
-                return { key: getFishKey(container.week.week_number, i) };
-            }
+        if (
+            worldX >= hitX &&
+            worldX <= hitX + hitWidth &&
+            worldY >= hitY &&
+            worldY <= hitY + hitHeight
+        ) {
+            return { key: getFishKey(fish.weekNumber, fish.fishIndex) };
         }
     }
 
@@ -736,11 +1096,23 @@ function applyAutoZoomStep() {
     const outRate = AUTO_ZOOM_OUT_RATE * zoomOutSpeedMultiplier;
     let targetZoom = zoom;
 
+    // Determine zoom center point based on layout
+    let zoomCenterX, zoomCenterY;
+    if (useGridLayout) {
+        // For grid layout, zoom from top-left area (200px from left, near top)
+        zoomCenterX = 200;
+        zoomCenterY = 150;
+    } else {
+        // For circular layout, zoom from center
+        zoomCenterX = canvas.width * 0.5;
+        zoomCenterY = canvas.height * 0.5;
+    }
+
     if (autoZoomDirection === -1 && stopAtZoomEnabled) {
         const zoomStopTarget = stopPercentToZoom(stopAtZoomPercent);
 
         if (zoom <= zoomStopTarget + ZOOM_STOP_SNAP_THRESHOLD) {
-            setZoomAroundScreenPoint(zoomStopTarget, canvas.width * 0.5, canvas.height * 0.5);
+            setZoomAroundScreenPoint(zoomStopTarget, zoomCenterX, zoomCenterY);
             isAutoZoomPlaying = false;
             updatePlaybackUI();
             return;
@@ -758,7 +1130,7 @@ function applyAutoZoomStep() {
             updatePlaybackUI();
         }
 
-        setZoomAroundScreenPoint(targetZoom, canvas.width * 0.5, canvas.height * 0.5);
+        setZoomAroundScreenPoint(targetZoom, zoomCenterX, zoomCenterY);
         return;
     }
 
@@ -770,15 +1142,7 @@ function applyAutoZoomStep() {
         if (targetZoom <= AUTO_ZOOM_MIN) autoZoomDirection = 1;
     }
 
-    const centerX = canvas.width * 0.5;
-    const centerY = canvas.height * 0.5;
-    setZoomAroundScreenPoint(targetZoom, centerX, centerY);
-}
-
-function getWeekAtMouse() {
-    // Simple approach - return first week for now
-    // In a more complete implementation, this would check actual mouse position
-    return fishData[0] || null;
+    setZoomAroundScreenPoint(targetZoom, zoomCenterX, zoomCenterY);
 }
 
 // Start the visualization
