@@ -7,8 +7,9 @@ const resetButton = document.getElementById('resetButton');
 const zoomOutSpeedSlider = document.getElementById('zoomOutSpeed');
 const zoomOutSpeedValue = document.getElementById('zoomOutSpeedValue');
 const stopAtZoomEnabledCheckbox = document.getElementById('stopAtZoomEnabled');
-const stopAtZoomLevelSlider = document.getElementById('stopAtZoomLevel');
+const stopAtZoomLevelInput = document.getElementById('stopAtZoomLevel');
 const stopAtZoomLevelValue = document.getElementById('stopAtZoomLevelValue');
+const stopAtZoomPresetSelect = document.getElementById('stopAtZoomPreset');
 const showScaleBarCheckbox = document.getElementById('showScaleBar');
 const showCenterBoxCheckbox = document.getElementById('showCenterBox');
 const showCenterReticleCheckbox = document.getElementById('showCenterReticle');
@@ -21,6 +22,39 @@ const manualZoomSlider = document.getElementById('manualZoom');
 const manualZoomValue = document.getElementById('manualZoomValue');
 const invisibleYearLayoutCheckbox = document.getElementById('invisibleYearLayout');
 const playYearAnimationButton = document.getElementById('playYearAnimationButton');
+const invisibleWeekLayoutCheckbox = document.getElementById('invisibleWeekLayout');
+const playWeekAnimationButton = document.getElementById('playWeekAnimationButton');
+
+const YEAR_FADE_DURATION_MS = 2000;
+const WEEK_FADE_DURATION_MS = 2000;
+
+// Configuration
+const FISH_IMAGE_HEIGHT = 16; // Short side of the rendered fish before rotation
+const ZOOM_SPEED = 0.04;
+const ZOOM_MIN = 0.05;
+const ZOOM_MAX = 13;
+const ZOOM_THRESHOLD = 1.0; // Threshold for switching between zoom modes
+const PIXEL_MODE_ZOOM_THRESHOLD = 0.3; // Zoom level at which to switch to pixel mode
+const AUTO_ZOOM_IN_RATE = 0.012;
+const AUTO_ZOOM_OUT_RATE = 0.006;
+const AUTO_ZOOM_MIN = 0.05;
+const AUTO_ZOOM_MAX = 13;
+const MANUAL_ZOOM_STEP = 0.001; // Must match slider step in HTML
+const ZOOM_STOP_SNAP_THRESHOLD = 0.002;
+const PIXEL_MODE_HYSTERESIS_ZOOM = 0.04;
+const GRID_PIXEL_MODE_ZOOM_THRESHOLD = 0.8;
+const ISOLATION_FADE_IN_DURATION_MS = 5000;
+const ISOLATION_OTHER_ALPHA_MULTIPLIER = 0;
+
+// Computed values
+let fishPositions = []; // Array of {x, y, weekNumber, fishIndex, circleIndex}
+let layoutBounds = { width: 0, height: 0 };
+let fishAspectRatio = 1;
+let fishRenderWidth = 16;
+let fishRenderHeight = FISH_IMAGE_HEIGHT;
+let centerCanvasX = 0;
+let centerCanvasY = 0;
+let isPixelRenderModeActive = false;
 
 // State
 let fishData = [];
@@ -40,7 +74,7 @@ let isolationFade = 0;
 let isolationTarget = 0;
 let pendingPlayAfterFadeIn = false;
 let stopAtZoomEnabled = stopAtZoomEnabledCheckbox ? stopAtZoomEnabledCheckbox.checked : false;
-let stopAtZoomPercent = parseFloat(stopAtZoomLevelSlider ? stopAtZoomLevelSlider.value : '18') || 18;
+let stopAtZoomTarget = normalizeStopZoomTarget(stopAtZoomLevelInput ? stopAtZoomLevelInput.value : '0.8');
 let showScaleBar = showScaleBarCheckbox ? showScaleBarCheckbox.checked : true;
 let showCenterBox = showCenterBoxCheckbox ? showCenterBoxCheckbox.checked : true;
 let showCenterReticle = showCenterReticleCheckbox ? showCenterReticleCheckbox.checked : true;
@@ -49,34 +83,14 @@ let useGridLayout = useGridLayoutCheckbox ? useGridLayoutCheckbox.checked : fals
 let floorColor = '#336132';
 let backgroundMode = 'gradient'; // 'gradient', 'image', or 'video'
 let invisibleYearLayout = invisibleYearLayoutCheckbox ? invisibleYearLayoutCheckbox.checked : false;
+let invisibleWeekLayout = invisibleWeekLayoutCheckbox ? invisibleWeekLayoutCheckbox.checked : false;
 let yearFadeOpacity = 1; // 0-1, controls visibility of year rings
-let isPlayingSecondStage = false; // Whether second stage animation is active
+let weekFadeOpacity = 1; // 0-1, controls visibility of week rings
+let isPlayingYearStage = false;
+let isPlayingWeekStage = false;
 let yearFadeStartTime = 0;
-const YEAR_FADE_DURATION_MS = 2000;
-
-// Configuration
-const FISH_IMAGE_HEIGHT = 16; // Short side of the rendered fish before rotation
-const ZOOM_SPEED = 0.04;
-const ZOOM_MIN = 0.05;
-const ZOOM_MAX = 15;
-const ZOOM_THRESHOLD = 1.0; // Threshold for switching between zoom modes
-const PIXEL_MODE_ZOOM_THRESHOLD = 0.3; // Zoom level at which to switch to pixel mode
-const AUTO_ZOOM_IN_RATE = 0.012;
-const AUTO_ZOOM_OUT_RATE = 0.006;
-const AUTO_ZOOM_MIN = 0.05;
-const AUTO_ZOOM_MAX = 3.2;
-const ZOOM_STOP_SNAP_THRESHOLD = 0.002;
-const ISOLATION_FADE_IN_DURATION_MS = 5000;
-const ISOLATION_OTHER_ALPHA_MULTIPLIER = 0;
-
-// Computed values
-let fishPositions = []; // Array of {x, y, weekNumber, fishIndex, circleIndex}
-let layoutBounds = { width: 0, height: 0 };
-let fishAspectRatio = 1;
-let fishRenderWidth = 16;
-let fishRenderHeight = FISH_IMAGE_HEIGHT;
-let centerCanvasX = 0;
-let centerCanvasY = 0;
+let weekFadeStartTime = 0;
+let hasSnappedToZoomStop = false;
 
 // Initialize
 async function init() {
@@ -105,8 +119,12 @@ async function init() {
     if (stopAtZoomEnabledCheckbox) {
         stopAtZoomEnabledCheckbox.addEventListener('change', handleStopAtZoomEnabledChange);
     }
-    if (stopAtZoomLevelSlider) {
-        stopAtZoomLevelSlider.addEventListener('input', handleStopAtZoomLevelChange);
+    if (stopAtZoomLevelInput) {
+        stopAtZoomLevelInput.addEventListener('input', handleStopAtZoomLevelChange);
+        stopAtZoomLevelInput.addEventListener('change', handleStopAtZoomLevelChange);
+    }
+    if (stopAtZoomPresetSelect) {
+        stopAtZoomPresetSelect.addEventListener('change', handleStopAtZoomPresetChange);
     }
     if (showScaleBarCheckbox) {
         showScaleBarCheckbox.addEventListener('change', handleScaleBarToggleChange);
@@ -133,14 +151,31 @@ async function init() {
     if (invisibleYearLayoutCheckbox) {
         invisibleYearLayoutCheckbox.addEventListener('change', handleInvisibleYearLayoutChange);
     }
-    playYearAnimationButton.addEventListener('click', handlePlayYearAnimation);
+    if (playYearAnimationButton) {
+        playYearAnimationButton.addEventListener('click', handlePlayYearAnimation);
+    }
+    if (invisibleWeekLayoutCheckbox) {
+        invisibleWeekLayoutCheckbox.addEventListener('change', handleInvisibleWeekLayoutChange);
+    }
+    if (playWeekAnimationButton) {
+        playWeekAnimationButton.addEventListener('click', handlePlayWeekAnimation);
+    }
 
     updatePlaybackUI();
     updateSpeedLabel();
+    if (stopAtZoomLevelInput) {
+        stopAtZoomLevelInput.value = stopAtZoomTarget.toFixed(2);
+    }
+    syncStopPresetSelection();
     updateStopAtZoomLabel();
     
     // Initialize button states
-    playYearAnimationButton.disabled = !invisibleYearLayout;
+    if (playYearAnimationButton) {
+        playYearAnimationButton.disabled = !invisibleYearLayout;
+    }
+    if (playWeekAnimationButton) {
+        playWeekAnimationButton.disabled = !invisibleWeekLayout;
+    }
     
     // Start animation loop
     animate();
@@ -239,13 +274,13 @@ function calculateCircularLayout() {
 
     if (fishData.length === 0) return;
 
-    const SPACING_MULTIPLIER = 1.6; // Spacing between fish along circle
-    const baseRadius = 100;
+    const SPACING_MULTIPLIER = 1.4; // Spacing between fish along circle
+    const WEEK_RING_RADIUS = 50;
     const ringGap = 40; // Distance between rings
 
     // Place center fish - pointing upwards
     fishPositions.push({ 
-        x: 0, y: 0, 
+        x: -1, y: 0, 
         weekNumber: fishData[0].week_number, 
         fishIndex: 0, 
         angle: -Math.PI / 2,
@@ -253,20 +288,23 @@ function calculateCircularLayout() {
     });
 
     // Helper function to place fish in concentric rings
-    function placeRingSet(fishGroups, startRadiusMultiplier, isLastGroup = false, ringSetType = 'week') {
+    function placeRingSet(fishGroups, startRadius, isLastGroup = false, ringSetType = 'week') {
         let totalFish = fishGroups.reduce((sum, g) => sum + g.count, 0);
-        if (totalFish === 0) return;
+        if (totalFish === 0) return null;
 
         let fishPlaced = 0;
         let currentRing = 0;
         let maxRings = Math.ceil(totalFish / 100); // Prevent infinite loops
+        let outerRadius = null;
 
         while (fishPlaced < totalFish && currentRing < maxRings) {
-            const currentRadius = baseRadius + startRadiusMultiplier * ringGap + currentRing * ringGap;
+            const currentRadius = startRadius + currentRing * ringGap;
             const circumference = 2 * Math.PI * currentRadius;
             const maxFishInRing = Math.floor(circumference / (fishRenderHeight * SPACING_MULTIPLIER));
             
             if (maxFishInRing === 0) break;
+
+            outerRadius = currentRadius;
 
             // Place fish in this ring
             let fishInThisRing = Math.min(maxFishInRing, totalFish - fishPlaced);
@@ -320,6 +358,8 @@ function calculateCircularLayout() {
 
             currentRing++;
         }
+
+        return outerRadius;
     }
 
     // Organize fish by circle type
@@ -335,8 +375,7 @@ function calculateCircularLayout() {
     const yearFish = [];
     
     // Calculate how many month fish can fit in a single ring
-    const monthRingRadiusMultiplier = weekFish.length > 0 ? 4 : 1;
-    const monthRingRadius = baseRadius + monthRingRadiusMultiplier * ringGap;
+    const monthRingRadius = weekFish.length > 0 ? WEEK_RING_RADIUS + ringGap : WEEK_RING_RADIUS;
     const monthRingCircumference = 2 * Math.PI * monthRingRadius;
     const maxMonthFishInRing = Math.floor(monthRingCircumference / (fishRenderHeight * SPACING_MULTIPLIER));
     
@@ -367,15 +406,22 @@ function calculateCircularLayout() {
     // Remove old yearFish loop since we handle it above
 
     // Place each ring set
+    let weekOuterRadius = null;
+    let monthOuterRadius = null;
+
     if (weekFish.length > 0) {
-        placeRingSet(weekFish, 1, false, 'week');
+        weekOuterRadius = placeRingSet(weekFish, WEEK_RING_RADIUS, false, 'week');
     }
     if (monthFish.length > 0) {
-        placeRingSet(monthFish, weekFish.length > 0 ? 4 : 1, false, 'month');
+        monthOuterRadius = placeRingSet(monthFish, monthRingRadius, false, 'month');
     }
     if (yearFish.length > 0) {
-        const yearStartMultiplier = (weekFish.length > 0 ? 4 : 1) + (monthFish.length > 0 ? (invisibleYearLayout ? 0 : 20) : 0);
-        placeRingSet(yearFish, yearStartMultiplier, true, 'year');
+        const previousOuterRadius = monthOuterRadius ?? weekOuterRadius ?? WEEK_RING_RADIUS;
+        const yearStartRadius = Math.max(
+            previousOuterRadius + ringGap,
+            previousOuterRadius + fishRenderWidth + 16
+        );
+        placeRingSet(yearFish, yearStartRadius, true, 'year');
     }
 
     // Calculate bounds
@@ -528,6 +574,7 @@ function centerLayout() {
 function handleZoom(e) {
     e.preventDefault();
     isAutoZoomPlaying = false;
+    hasSnappedToZoomStop = false;
     updatePlaybackUI();
     
     const zoomFactor = e.deltaY > 0 ? 1 - ZOOM_SPEED : 1 + ZOOM_SPEED;
@@ -543,6 +590,7 @@ function handleZoom(e) {
 
 function handleDragStart(e) {
     isAutoZoomPlaying = false;
+    hasSnappedToZoomStop = false;
     pendingPlayAfterFadeIn = false;
     updatePlaybackUI();
     isDragging = true;
@@ -580,6 +628,7 @@ function animate() {
     updateIsolationFade();
     updateSecondStageAnimation();
     applyAutoZoomStep();
+    updatePixelRenderModeState();
 
     drawBackground();
     
@@ -588,8 +637,12 @@ function animate() {
     
     ctx.save();
     
-    // Apply pan and zoom - round coordinates at low zoom to avoid sub-pixel shimmer
-    if (zoom < PIXEL_MODE_ZOOM_THRESHOLD) {
+    // Round pan when zoom is low OR when pixel fish are shown (hysteresis keeps pixel mode
+    // above PIXEL_MODE_ZOOM_THRESHOLD); otherwise pan flips at 0.3 while still in pixel mode
+    // and the center fish (world 0,0) jumps on screen.
+    const roundWorldPan =
+        zoom < PIXEL_MODE_ZOOM_THRESHOLD || isPixelRenderModeActive;
+    if (roundWorldPan) {
         ctx.translate(Math.round(panX), Math.round(panY));
     } else {
         ctx.translate(panX, panY);
@@ -627,12 +680,14 @@ function drawFishGrid() {
         if (invisibleYearLayout && fishPos.ringSetType === 'year') {
             alpha *= yearFadeOpacity;
         }
+        if (invisibleWeekLayout && fishPos.ringSetType === 'week') {
+            alpha *= weekFadeOpacity;
+        }
         
         ctx.globalAlpha = alpha;
         
-        // Use pixel mode when zoomed out and option is enabled, or always in grid layout when zoomed out
-        const shouldUsePixelMode = (usePixelMode && zoom < PIXEL_MODE_ZOOM_THRESHOLD) || (useGridLayout && zoom < 0.8);
-        if (shouldUsePixelMode) {
+        // Use a hysteresis-backed mode to avoid visible one-frame switches near threshold stops.
+        if (isPixelRenderModeActive) {
             drawPixel(fishPos.x, fishPos.y, fishPos.angle);
         } else {
             drawRotatedFish(fishImage, fishPos.x, fishPos.y, fishRenderWidth, fishRenderHeight, fishPos.angle);
@@ -646,10 +701,10 @@ function drawRotatedFish(img, x, y, width, height, angle) {
     // Save the current context state
     ctx.save();
     
-    // Round coordinates at very low zoom to reduce shimmering
+    // Round coordinates at very low zoom to reduce shimmering (must match drawPixel)
     let drawX = x;
     let drawY = y;
-    if (zoom < 0.3) {
+    if (zoom < PIXEL_MODE_ZOOM_THRESHOLD) {
         drawX = Math.round(x);
         drawY = Math.round(y);
     }
@@ -671,8 +726,16 @@ function drawPixel(x, y, angle) {
     // Save the current context state
     ctx.save();
     
+    // Same world snapping as drawRotatedFish so the placeholder does not jump at mode switch
+    let drawX = x;
+    let drawY = y;
+    if (zoom < PIXEL_MODE_ZOOM_THRESHOLD) {
+        drawX = Math.round(x);
+        drawY = Math.round(y);
+    }
+    
     // Translate to the position where the pixel will be drawn (center of fish)
-    ctx.translate(x, y);
+    ctx.translate(drawX, drawY);
     
     // Rotate by the angle (same as fish)
     ctx.rotate(angle);
@@ -727,15 +790,19 @@ function toggleAutoZoomPlayback() {
 }
 
 function startAutoZoomPlayback() {
+    hasSnappedToZoomStop = false;
     isAutoZoomPlaying = true;
     autoZoomDirection = -1;
 }
 
 function resetView() {
     isAutoZoomPlaying = false;
+    isPlayingYearStage = false;
+    isPlayingWeekStage = false;
     pendingPlayAfterFadeIn = false;
     clearFishIsolation();
     autoZoomDirection = 1;
+    hasSnappedToZoomStop = false;
     centerLayout();
     updatePlaybackUI();
 }
@@ -754,20 +821,73 @@ function handleStopAtZoomEnabledChange() {
 }
 
 function handleStopAtZoomLevelChange() {
-    stopAtZoomPercent = parseFloat(stopAtZoomLevelSlider.value) || 0;
-    stopAtZoomPercent = Math.max(0, Math.min(100, stopAtZoomPercent));
+    stopAtZoomTarget = normalizeStopZoomTarget(stopAtZoomLevelInput ? stopAtZoomLevelInput.value : stopAtZoomTarget);
+    if (stopAtZoomLevelInput) {
+        stopAtZoomLevelInput.value = stopAtZoomTarget.toFixed(2);
+    }
+    syncStopPresetSelection();
     updateStopAtZoomLabel();
 }
 
 function updateStopAtZoomLabel() {
     if (!stopAtZoomLevelValue) return;
-    stopAtZoomLevelValue.textContent = `${stopAtZoomPercent.toFixed(0)}%`;
+    stopAtZoomLevelValue.textContent = `${stopAtZoomTarget.toFixed(2)}x`;
 }
 
-function stopPercentToZoom(percent) {
-    const clampedPercent = Math.max(0, Math.min(100, percent));
-    const t = clampedPercent / 100;
-    return AUTO_ZOOM_MIN + (AUTO_ZOOM_MAX - AUTO_ZOOM_MIN) * t;
+function normalizeStopZoomTarget(rawValue) {
+    const parsed = parseFloat(rawValue);
+    const fallback = zoom || 0.8;
+    const clampedZoom = Math.max(AUTO_ZOOM_MIN, Math.min(AUTO_ZOOM_MAX, Number.isFinite(parsed) ? parsed : fallback));
+    // Round to slider precision to avoid floating point mismatches
+    return Math.round(clampedZoom / MANUAL_ZOOM_STEP) * MANUAL_ZOOM_STEP;
+}
+
+function handleStopAtZoomPresetChange() {
+    if (!stopAtZoomPresetSelect) return;
+    if (stopAtZoomPresetSelect.value === 'custom') {
+        return;
+    }
+
+    stopAtZoomTarget = normalizeStopZoomTarget(stopAtZoomPresetSelect.value);
+    if (stopAtZoomLevelInput) {
+        stopAtZoomLevelInput.value = stopAtZoomTarget.toFixed(2);
+    }
+    updateStopAtZoomLabel();
+}
+
+function syncStopPresetSelection() {
+    if (!stopAtZoomPresetSelect) return;
+    const options = Array.from(stopAtZoomPresetSelect.options).filter((option) => option.value !== 'custom');
+    const matching = options.find((option) => Math.abs(parseFloat(option.value) - stopAtZoomTarget) < 0.005);
+    stopAtZoomPresetSelect.value = matching ? matching.value : 'custom';
+}
+
+function updatePixelRenderModeState(forceFromCurrentZoom = false) {
+    const pixelModeEnabled = usePixelMode || useGridLayout;
+    if (!pixelModeEnabled) {
+        isPixelRenderModeActive = false;
+        return;
+    }
+
+    const threshold = useGridLayout ? GRID_PIXEL_MODE_ZOOM_THRESHOLD : PIXEL_MODE_ZOOM_THRESHOLD;
+    const enterThreshold = threshold - PIXEL_MODE_HYSTERESIS_ZOOM;
+    const exitThreshold = threshold + PIXEL_MODE_HYSTERESIS_ZOOM;
+
+    if (forceFromCurrentZoom) {
+        isPixelRenderModeActive = zoom < threshold;
+        return;
+    }
+
+    if (isPixelRenderModeActive) {
+        if (zoom > exitThreshold) {
+            isPixelRenderModeActive = false;
+        }
+        return;
+    }
+
+    if (zoom < enterThreshold) {
+        isPixelRenderModeActive = true;
+    }
 }
 
 function handleScaleBarToggleChange() {
@@ -784,10 +904,12 @@ function handleCenterReticleToggleChange() {
 
 function handlePixelModeToggleChange() {
     usePixelMode = !!usePixelModeCheckbox.checked;
+    updatePixelRenderModeState(true);
 }
 
 function handleGridLayoutToggleChange() {
     useGridLayout = !!useGridLayoutCheckbox.checked;
+    updatePixelRenderModeState(true);
     calculateLayout();
     resetView();
 }
@@ -796,10 +918,31 @@ function handleInvisibleYearLayoutChange() {
     invisibleYearLayout = !!invisibleYearLayoutCheckbox.checked;
     if (invisibleYearLayout) {
         yearFadeOpacity = 0; // Start invisible
-        playYearAnimationButton.disabled = false;
+        if (playYearAnimationButton) {
+            playYearAnimationButton.disabled = false;
+        }
     } else {
         yearFadeOpacity = 1; // Make visible
-        playYearAnimationButton.disabled = true;
+        if (playYearAnimationButton) {
+            playYearAnimationButton.disabled = true;
+        }
+    }
+    calculateLayout();
+    resetView();
+}
+
+function handleInvisibleWeekLayoutChange() {
+    invisibleWeekLayout = !!invisibleWeekLayoutCheckbox.checked;
+    if (invisibleWeekLayout) {
+        weekFadeOpacity = 0; // Start invisible
+        if (playWeekAnimationButton) {
+            playWeekAnimationButton.disabled = false;
+        }
+    } else {
+        weekFadeOpacity = 1; // Make visible
+        if (playWeekAnimationButton) {
+            playWeekAnimationButton.disabled = true;
+        }
     }
     calculateLayout();
     resetView();
@@ -808,25 +951,56 @@ function handleInvisibleYearLayoutChange() {
 function handlePlayYearAnimation() {
     if (!invisibleYearLayout) return; // Only works in invisible year layout mode
     
+    hasSnappedToZoomStop = false;
     isAutoZoomPlaying = false;
     updatePlaybackUI();
-    isPlayingSecondStage = true;
+    isPlayingYearStage = true;
+    isPlayingWeekStage = false;
     yearFadeStartTime = performance.now();
     yearFadeOpacity = 0;
 }
 
+function handlePlayWeekAnimation() {
+    if (!invisibleWeekLayout) return; // Only works in invisible week layout mode
+
+    hasSnappedToZoomStop = false;
+    isAutoZoomPlaying = false;
+    updatePlaybackUI();
+    isPlayingWeekStage = true;
+    isPlayingYearStage = false;
+    weekFadeStartTime = performance.now();
+    weekFadeOpacity = 0;
+}
+
 function updateSecondStageAnimation() {
-    if (!isPlayingSecondStage) return;
-    
-    const elapsed = performance.now() - yearFadeStartTime;
-    
-    if (elapsed < YEAR_FADE_DURATION_MS) {
-        // Fade in the year rings
-        yearFadeOpacity = elapsed / YEAR_FADE_DURATION_MS;
-    } else {
-        // Fade complete, start zoom out animation
+    if (isPlayingYearStage) {
+        const elapsed = performance.now() - yearFadeStartTime;
+
+        if (elapsed < YEAR_FADE_DURATION_MS) {
+            yearFadeOpacity = elapsed / YEAR_FADE_DURATION_MS;
+            return;
+        }
+
         yearFadeOpacity = 1;
-        isPlayingSecondStage = false;
+        isPlayingYearStage = false;
+        hasSnappedToZoomStop = false;
+        isAutoZoomPlaying = true;
+        autoZoomDirection = -1;
+        updatePlaybackUI();
+        return;
+    }
+
+    if (isPlayingWeekStage) {
+        const elapsed = performance.now() - weekFadeStartTime;
+
+        if (elapsed < WEEK_FADE_DURATION_MS) {
+            weekFadeOpacity = elapsed / WEEK_FADE_DURATION_MS;
+            return;
+        }
+
+        weekFadeOpacity = 1;
+        isPlayingWeekStage = false;
+        hasSnappedToZoomStop = false;
         isAutoZoomPlaying = true;
         autoZoomDirection = -1;
         updatePlaybackUI();
@@ -858,6 +1032,7 @@ function updateBgButtonUI() {
 
 function handleManualZoomChange() {
     isAutoZoomPlaying = false;
+    hasSnappedToZoomStop = false;
     updatePlaybackUI();
     zoom = parseFloat(manualZoomSlider.value) || 1;
 }
@@ -876,8 +1051,8 @@ function drawCenterBoxOverlay() {
 
     ctx.fillStyle = 'rgba(0, 0, 0, 0.2)';
     ctx.fillRect(boxX, boxY, boxWidth, boxHeight);
-    ctx.strokeStyle = 'rgba(0, 0, 0, 0.5)';
-    ctx.lineWidth = 1;
+    ctx.strokeStyle = 'rgba(255, 0, 0)';
+    ctx.lineWidth = 4;
     ctx.strokeRect(boxX, boxY, boxWidth, boxHeight);
 
     // Draw smaller box 1/4 of the way up the center box
@@ -993,17 +1168,30 @@ function handleCanvasClick(e) {
 }
 
 function drawSelectedFishScaleBar() {
-    if (!showScaleBar || !isolatedFishKey || isolationTarget !== 1) {
+    if (!showScaleBar) {
         return;
     }
 
-    const placement = getFishPlacementByKey(isolatedFishKey);
+    let placement;
+    
+    // If a fish is isolated, show scale bar for that fish
+    if (isolatedFishKey && isolationTarget === 1) {
+        placement = getFishPlacementByKey(isolatedFishKey);
+    } else {
+        // Otherwise, show scale bar for center fish (first position)
+        if (fishPositions.length === 0) {
+            return;
+        }
+        const centerFish = fishPositions[0];
+        placement = { fishX: centerFish.x, fishY: centerFish.y };
+    }
+
     if (!placement) {
         return;
     }
 
-    const centerX = placement.fishX + fishRenderWidth / 2;
-    const centerY = placement.fishY + fishRenderHeight / 2;
+    const centerX = placement.fishX;
+    const centerY = placement.fishY;
     const tipY = centerY - fishRenderWidth / 2;
     const tailY = centerY + fishRenderWidth / 2;
     const displayLengthPx = fishRenderWidth * zoom;
@@ -1089,6 +1277,23 @@ function setZoomAroundScreenPoint(nextZoom, screenX, screenY) {
     panY = screenY - worldY * zoom;
 }
 
+/**
+ * Ends auto zoom-out at the stop zoom. When already within snap distance, only the zoom
+ * scalar is nudged (same idea as the manual slider — pan unchanged). That avoids a tiny
+ * focal pan correction that, with Math.round(pan) at low zoom + pixel fish drawing, read as a jump.
+ */
+function finishAutoZoomAtStop(zoomStopTarget, zoomCenterX, zoomCenterY) {
+    const tgt = Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, zoomStopTarget));
+    if (Math.abs(zoom - tgt) <= ZOOM_STOP_SNAP_THRESHOLD) {
+        zoom = tgt;
+    } else {
+        setZoomAroundScreenPoint(tgt, zoomCenterX, zoomCenterY);
+    }
+    hasSnappedToZoomStop = true;
+    isAutoZoomPlaying = false;
+    updatePlaybackUI();
+}
+
 function applyAutoZoomStep() {
     if (!isAutoZoomPlaying) return;
 
@@ -1109,28 +1314,27 @@ function applyAutoZoomStep() {
     }
 
     if (autoZoomDirection === -1 && stopAtZoomEnabled) {
-        const zoomStopTarget = stopPercentToZoom(stopAtZoomPercent);
+        const zoomStopTarget = stopAtZoomTarget;
+        const distance = zoom - zoomStopTarget;
 
-        if (zoom <= zoomStopTarget + ZOOM_STOP_SNAP_THRESHOLD) {
-            setZoomAroundScreenPoint(zoomStopTarget, zoomCenterX, zoomCenterY);
-            isAutoZoomPlaying = false;
-            updatePlaybackUI();
+        if (!hasSnappedToZoomStop && distance <= ZOOM_STOP_SNAP_THRESHOLD) {
+            finishAutoZoomAtStop(zoomStopTarget, zoomCenterX, zoomCenterY);
             return;
         }
 
-        const distance = zoom - zoomStopTarget;
-        const slowdownRange = Math.max(0.2, zoomStopTarget * 0.7);
-        const slowdownFactor = Math.max(0.08, Math.min(1, distance / slowdownRange));
-        const adjustedOutRate = outRate * slowdownFactor;
-        targetZoom = Math.max(zoomStopTarget, zoom * (1 - adjustedOutRate));
-
-        if (targetZoom - zoomStopTarget <= ZOOM_STOP_SNAP_THRESHOLD) {
-            targetZoom = zoomStopTarget;
-            isAutoZoomPlaying = false;
-            updatePlaybackUI();
+        // If already snapped, don't zoom anymore
+        if (hasSnappedToZoomStop) {
+            return;
         }
 
-        setZoomAroundScreenPoint(targetZoom, zoomCenterX, zoomCenterY);
+        const nextZoom = Math.max(zoomStopTarget, zoom * (1 - outRate));
+
+        if (Math.abs(nextZoom - zoomStopTarget) <= ZOOM_STOP_SNAP_THRESHOLD) {
+            finishAutoZoomAtStop(zoomStopTarget, zoomCenterX, zoomCenterY);
+            return;
+        }
+
+        setZoomAroundScreenPoint(nextZoom, zoomCenterX, zoomCenterY);
         return;
     }
 

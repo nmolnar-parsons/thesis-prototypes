@@ -16,7 +16,7 @@
                 <button id="resetButton" type="button">Reset</button>
             </div>
             <label for="manualZoom">Manual Zoom</label>
-            <input id="manualZoom" type="range" min="0.05" max="15" step="0.01" value="1">
+            <input id="manualZoom" type="range" min="0.05" max="13" step="0.001" value="1">
             <p id="manualZoomValue">1.0x</p>
             <label for="zoomOutSpeed">Zoom Out Speed</label>
             <input id="zoomOutSpeed" type="range" min="0.2" max="4" step="0.1" value="1.6">
@@ -25,9 +25,16 @@
                 <input id="stopAtZoomEnabled" type="checkbox" checked>
                 Stop zoom-out at target
             </label>
-            <label for="stopAtZoomLevel">Target zoom-out stop (%)</label>
-            <input id="stopAtZoomLevel" type="range" min="0" max="100" step="0.1" value="18">
-            <p id="stopAtZoomLevelValue">18%</p>
+            <label for="stopAtZoomPreset">Target zoom-out stop</label>
+            <select id="stopAtZoomPreset">
+                <option value="custom">Custom</option>
+                <option value="0.12">Year (.12x)</option>
+                <option value="0.95">Week (.95x)</option>
+                <option value="0.8">Pixel (.80x)</option>
+                <option value="1">Grid (1.00x)</option>
+            </select>
+            <input id="stopAtZoomLevel" type="number" min="0.05" max="10" step="0.01" value="0.80">
+            <p id="stopAtZoomLevelValue">0.80x</p>
             <label class="checkbox-row" for="showScaleBar">
                 <input id="showScaleBar" type="checkbox" checked>
                 Show fish scale bar
@@ -46,13 +53,18 @@
             </label>
             <label class="checkbox-row" for="useGridLayout">
                 <input id="useGridLayout" type="checkbox">
-                Grid layout (instead of circular)
+                Grid layout
             </label>
             <label class="checkbox-row" for="invisibleYearLayout">
                 <input id="invisibleYearLayout" type="checkbox">
                 Invisible year ring layout
             </label>
             <button id="playYearAnimationButton" type="button">Play Year Animation</button>
+            <label class="checkbox-row" for="invisibleWeekLayout">
+                <input id="invisibleWeekLayout" type="checkbox">
+                Invisible week ring layout
+            </label>
+            <button id="playWeekAnimationButton" type="button">Play Week Animation</button>
             <div class="section-divider"></div>
             <p class="section-title">Background</p>
             <div class="button-row">

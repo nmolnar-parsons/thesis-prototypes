@@ -30,19 +30,29 @@ function getCountEquivalentExpression(type, year) {
 }
 
 function getColorRampExpression(valueExpr) {
-  // 10-step color scale: ocean_color for 0, then 9 steps from schemeYlOrRd
-  const colorScale = [ocean_color, ...d3.schemeYlOrRd[9]];
-  const breakpoints = [0, 50, 100, 250, 500, 1250, 2500, 6250, 12500, 31250, 100000];
-  
-  // Build interpolation array: ['interpolate', ['linear'], valueExpr, breakpoint1, color1, breakpoint2, color2, ...]
-  const interpolation = ['interpolate', ['linear'], valueExpr];
-  
-  for (let i = 0; i < colorScale.length; i++) {
-    interpolation.push(breakpoints[i]);
-    interpolation.push(colorScale[i]);
+  const breakpoints = [0, 25, 50, 100, 250, 500, 1000, 2500, 5000, 10000, 25000];
+  const colorScale = [
+    ocean_color,
+    '#0b3c78',
+    '#0f558f',
+    '#1270a5',
+    '#1f88bb',
+    '#3ea2cf',
+    '#67b9de',
+    '#8dcdea',
+    '#b7def4',
+    '#deeffa',
+    '#ffffff'
+  ];
+
+  const stepped = ['step', valueExpr, colorScale[0]];
+
+  for (let i = 1; i < breakpoints.length; i++) {
+    stepped.push(breakpoints[i]);
+    stepped.push(colorScale[i]);
   }
-  
-  return interpolation;
+
+  return stepped;
 }
 
 // Animation state
@@ -59,6 +69,7 @@ let isZoomOutAnimating = false;
 let zoomOutSpeed = 0.1; // zoom levels per second
 let zoomOutTarget = 0.25;
 let zoomOutLastFrameTime = Date.now();
+const datasetCache = {};
 
 // UI element references
 let playPauseBtn = null;
@@ -151,7 +162,8 @@ map.on('load', function() {
     source: 'tuna-catch',
     paint: {
       'fill-color': getColorRampExpression(getCountEquivalentExpression('count', 2020)),
-      'fill-opacity': 0.7
+      'fill-opacity': 0.88,
+      'fill-antialias': false
     }
   });
 
@@ -209,7 +221,7 @@ map.on('load', function() {
     },
     'source-layer': 'country_boundaries',
     'paint': {
-        'fill-color': '#e9e9e9',
+        'fill-color': '#13265f',
         'fill-opacity': 1
     }
   });
@@ -385,11 +397,47 @@ function stopZoomOutAnimation() {
   }
 }
 
+function getCachedDataset(datasetKey) {
+  if (datasetCache[datasetKey]) {
+    return Promise.resolve(datasetCache[datasetKey]);
+  }
+
+  return fetch(datasets[datasetKey])
+    .then(response => response.json())
+    .then(data => {
+      datasetCache[datasetKey] = data;
+      return data;
+    });
+}
+
+function logBluefinCombinedCount(year) {
+  const roundedYear = Math.round(year);
+  const countKey = `count_${roundedYear}`;
+  const tonneKey = `tonne_${roundedYear}`;
+
+  getCachedDataset(currentDataset)
+    .then(data => {
+      const total = (data.features || []).reduce((sum, feature) => {
+        const properties = feature.properties || {};
+        const countValue = Number(properties[countKey]) || 0;
+        const tonneValue = Number(properties[tonneKey]) || 0;
+
+        return sum + countValue + Math.ceil(tonneValue * 40);
+      }, 0);
+
+      console.log(`Bluefin combined count for ${roundedYear}: ${total}`);
+    })
+    .catch(error => {
+      console.warn(`Unable to log bluefin combined count for ${roundedYear}:`, error);
+    });
+}
+
 // Function to update the map layer based on current year and type
 function updateMapLayer() {
   const roundedYear = Math.round(currentYear);
   const valueExpr = getCountEquivalentExpression(currentType, roundedYear);
   map.setPaintProperty('tuna-catch-fill', 'fill-color', getColorRampExpression(valueExpr));
+  logBluefinCombinedCount(roundedYear);
 }
 
 // Function to update dataset
