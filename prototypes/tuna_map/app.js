@@ -95,6 +95,7 @@ let zoomOutTargetValue = null;
 // Dataset configuration
 const datasets = {
   'catch1deg': 'data/tuna_data/cwp-grid-1deg-catch.geojson',
+  'bluefin1deg': 'data/tuna_data/bluefin-cwp-grid-1deg-catch.geojson',
   'sea1deg': 'data/tuna_data/cwp-grid-1deg-sea.geojson',
   'grid1deg': 'data/tuna_data/cwp-grid-1deg.geojson',
   'catch5deg': 'data/tuna_data/cwp-grid-5deg-catch.geojson',
