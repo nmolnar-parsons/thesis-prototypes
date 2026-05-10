@@ -1,0 +1,941 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -1.7098637499999998,
+          35.18830475
+        ]
+      },
+      "properties": {
+        "iccat_serial": "AT001DZA00001",
+        "country": "Algeria",
+        "reg_number": "DZA FARM 01-24",
+        "name": "SOUFI TUNA",
+        "capacity_t": 950.0,
+        "vertex_count": 4
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          13.77196366666667,
+          43.947491500000005
+        ]
+      },
+      "properties": {
+        "iccat_serial": "ATEU1HRV00011",
+        "country": "Croatia",
+        "reg_number": "138",
+        "name": "PELAGOS NET FARMA D.O.O.",
+        "capacity_t": 1827.0,
+        "vertex_count": 6
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          14.981414999999998,
+          43.30055025
+        ]
+      },
+      "properties": {
+        "iccat_serial": "ATEU1HRV00006",
+        "country": "Croatia",
+        "reg_number": "86",
+        "name": "SARDINA D.O.O.",
+        "capacity_t": 1854.9,
+        "vertex_count": 4
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          33.259722,
+          34.685833
+        ]
+      },
+      "properties": {
+        "iccat_serial": "ATEU1CYP00002",
+        "country": "Cyprus",
+        "reg_number": "014",
+        "name": "Kitiana Fisheries Ltd.",
+        "capacity_t": 0.0,
+        "vertex_count": 1
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          33.2675,
+          34.688611
+        ]
+      },
+      "properties": {
+        "iccat_serial": "ATEU1CYP00003",
+        "country": "Cyprus",
+        "reg_number": "015",
+        "name": "Oceanis Aquaculture Ltd",
+        "capacity_t": 0.0,
+        "vertex_count": 1
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          33.044444,
+          34.646944
+        ]
+      },
+      "properties": {
+        "iccat_serial": "ATEU1CYP00001",
+        "country": "Cyprus",
+        "reg_number": "07",
+        "name": "KIMAGRO FISHFARMING LTD",
+        "capacity_t": 0.0,
+        "vertex_count": 1
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -0.658167,
+          37.765833
+        ]
+      },
+      "properties": {
+        "iccat_serial": "ATEU1ESP00001",
+        "country": "Spain",
+        "reg_number": "ICAR 01",
+        "name": "TUNA GRASO",
+        "capacity_t": 2100.0,
+        "vertex_count": 1
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -0.84326375,
+          45.074472
+        ]
+      },
+      "properties": {
+        "iccat_serial": "ATEU1ESP00003",
+        "country": "Spain",
+        "reg_number": "ICAR 03",
+        "name": "CALADEROS DEL MEDITERRANEO",
+        "capacity_t": 1925.0,
+        "vertex_count": 4
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          0.85533325,
+          40.8621665
+        ]
+      },
+      "properties": {
+        "iccat_serial": "ATEU1ESP00005",
+        "country": "Spain",
+        "reg_number": "ICAR 05",
+        "name": "BALFEGO TUNA, S.L.",
+        "capacity_t": 6160.0,
+        "vertex_count": 4
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -0.6786277500000001,
+          37.7911445
+        ]
+      },
+      "properties": {
+        "iccat_serial": "ATEU1ESP00006",
+        "country": "Spain",
+        "reg_number": "ICAR 06",
+        "name": "PISCIFACTORIAS ALBADALEJO S.L.",
+        "capacity_t": 0.0,
+        "vertex_count": 4
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -0.872778,
+          37.5719445
+        ]
+      },
+      "properties": {
+        "iccat_serial": "ATEU1ESP00008",
+        "country": "Spain",
+        "reg_number": "ICAR 08",
+        "name": "TUNA FARMS",
+        "capacity_t": 0.0,
+        "vertex_count": 4
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -0.883746,
+          37.56579733333333
+        ]
+      },
+      "properties": {
+        "iccat_serial": "ATEU1ESP00011",
+        "country": "Spain",
+        "reg_number": "ICAR 11",
+        "name": "CALADEROS DEL MEDITERRANEO 2",
+        "capacity_t": 1155.0,
+        "vertex_count": 3
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -16.229461333333333,
+          37.225500000000004
+        ]
+      },
+      "properties": {
+        "iccat_serial": "ATEU1ESP00013",
+        "country": "Spain",
+        "reg_number": "ICAR 13",
+        "name": "NATURE PESCA S.L.",
+        "capacity_t": 0.0,
+        "vertex_count": 3
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -37.816667,
+          37.816667
+        ]
+      },
+      "properties": {
+        "iccat_serial": "ATEU1ESP00014",
+        "country": "Spain",
+        "reg_number": "ICAR 14",
+        "name": "PISCIFACTORIAS DEL MEDITERRANEO",
+        "capacity_t": 1680.0,
+        "vertex_count": 2
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -0.6950580000000001,
+          37.87986675
+        ]
+      },
+      "properties": {
+        "iccat_serial": "ATEU1ESP00019",
+        "country": "Spain",
+        "reg_number": "ICAR 19",
+        "name": "PISCIFACTORIAS DEL MEDITERRANEO 2",
+        "capacity_t": 70.0,
+        "vertex_count": 4
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -2.17542075,
+          43.3709165
+        ]
+      },
+      "properties": {
+        "iccat_serial": "ATEU1ESP00018",
+        "country": "Spain",
+        "reg_number": "ICAR 18",
+        "name": "ITSAS BALFEGO",
+        "capacity_t": 280.0,
+        "vertex_count": 4
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          22.9782025,
+          38.11532675
+        ]
+      },
+      "properties": {
+        "iccat_serial": "ATEU1GRC00002",
+        "country": "Greece",
+        "reg_number": "GR02/2007",
+        "name": "GLARONISI FISHERIES Ltd",
+        "capacity_t": 1100.0,
+        "vertex_count": 4
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          15.3528335,
+          39.965858499999996
+        ]
+      },
+      "properties": {
+        "iccat_serial": "ATEU1ITA00006",
+        "country": "Italy",
+        "reg_number": "ITA-FAR006",
+        "name": "Societa' Cooperativa Pescatori Cala Bianca",
+        "capacity_t": 0.0,
+        "vertex_count": 4
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          14.3326725,
+          40.78750825
+        ]
+      },
+      "properties": {
+        "iccat_serial": "ATEU1ITA00015",
+        "country": "Italy",
+        "reg_number": "ITA-FAR015",
+        "name": "LA FAVORITA SNC",
+        "capacity_t": 0.0,
+        "vertex_count": 4
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          8.3461565,
+          39.280716749999996
+        ]
+      },
+      "properties": {
+        "iccat_serial": "ATEU1ITA00021",
+        "country": "Italy",
+        "reg_number": "ITA-FAR-021",
+        "name": "Tonnare Sulcitane s.r.l.",
+        "capacity_t": 160.0,
+        "vertex_count": 4
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          14.668499999999998,
+          35.871225
+        ]
+      },
+      "properties": {
+        "iccat_serial": "ATEU1MLT00007",
+        "country": "Malta",
+        "reg_number": "MF29F",
+        "name": "Ta' Mattew Fisheries Ltd",
+        "capacity_t": 707.0,
+        "vertex_count": 4
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          14.66,
+          35.885725
+        ]
+      },
+      "properties": {
+        "iccat_serial": "ATEU1MLT00008",
+        "country": "Malta",
+        "reg_number": "MF28F",
+        "name": "Mare Blu Tuna Farm",
+        "capacity_t": 4200.0,
+        "vertex_count": 8
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          14.421041500000001,
+          35.97576375
+        ]
+      },
+      "properties": {
+        "iccat_serial": "ATEU1MLT00001",
+        "country": "Malta",
+        "reg_number": "MF12F",
+        "name": "AJD TUNA Ltd",
+        "capacity_t": 2247.0,
+        "vertex_count": 4
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          14.421041500000001,
+          35.97576375
+        ]
+      },
+      "properties": {
+        "iccat_serial": "ATEU1MLT00002",
+        "country": "Malta",
+        "reg_number": "MF10F",
+        "name": "MALTA MARICULTURE LIMITED",
+        "capacity_t": 2408.0,
+        "vertex_count": 4
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          14.651499999999999,
+          35.8495875
+        ]
+      },
+      "properties": {
+        "iccat_serial": "ATEU1MLT00003",
+        "country": "Malta",
+        "reg_number": "MF26F",
+        "name": "Fish & Fish Ltd.",
+        "capacity_t": 4200.0,
+        "vertex_count": 8
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          14.6515,
+          35.871225
+        ]
+      },
+      "properties": {
+        "iccat_serial": "ATEU1MLT00004",
+        "country": "Malta",
+        "reg_number": "MF25F",
+        "name": "MFF Ltd",
+        "capacity_t": 4200.0,
+        "vertex_count": 4
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -7.664278,
+          37.039278
+        ]
+      },
+      "properties": {
+        "iccat_serial": "ATEU1PRT00003",
+        "country": "Portugal",
+        "reg_number": "PT2022OTAA001254801",
+        "name": "BARRIL FARMING FACILITY",
+        "capacity_t": 370.0,
+        "vertex_count": 1
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -7.705556,
+          37.019444
+        ]
+      },
+      "properties": {
+        "iccat_serial": "ATEU1PRT00002",
+        "country": "Portugal",
+        "reg_number": "PT2020OTAA002830601",
+        "name": "TUNIRAISE",
+        "capacity_t": 370.0,
+        "vertex_count": 1
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          26.534537333333333,
+          31.494259333333332
+        ]
+      },
+      "properties": {
+        "iccat_serial": "AT001EGY00001",
+        "country": "Egypt",
+        "reg_number": "1",
+        "name": "MARSA GARGOUB",
+        "capacity_t": 1800.0,
+        "vertex_count": 3
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          15.15,
+          32.45
+        ]
+      },
+      "properties": {
+        "iccat_serial": "AT001LBY00003",
+        "country": "Libya",
+        "reg_number": "2",
+        "name": "TUNA FARM OF LIBYA (TFL)",
+        "capacity_t": 600.0,
+        "vertex_count": 1
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          13.746556,
+          32.798833
+        ]
+      },
+      "properties": {
+        "iccat_serial": "AT001LBY00004",
+        "country": "Libya",
+        "reg_number": "4",
+        "name": "ALHADER FARM OF TUNA",
+        "capacity_t": 600.0,
+        "vertex_count": 1
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          13.583333,
+          32.9
+        ]
+      },
+      "properties": {
+        "iccat_serial": "AT001LBY00002",
+        "country": "Libya",
+        "reg_number": "1",
+        "name": "BLUE DIAMOND",
+        "capacity_t": 600.0,
+        "vertex_count": 1
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -6.184194499999999,
+          35.313055500000004
+        ]
+      },
+      "properties": {
+        "iccat_serial": "AT001MAR00002",
+        "country": "Morocco",
+        "reg_number": "MORFARM-001",
+        "name": "BLUE FARM",
+        "capacity_t": 3000.0,
+        "vertex_count": 4
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -6.1711805,
+          35.311111
+        ]
+      },
+      "properties": {
+        "iccat_serial": "AT001MAR00003",
+        "country": "Morocco",
+        "reg_number": "MORFARM-002",
+        "name": "LA LEVANTADA",
+        "capacity_t": 1200.0,
+        "vertex_count": 4
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -6.1697223333333335,
+          35.33462966666667
+        ]
+      },
+      "properties": {
+        "iccat_serial": "AT001MAR00004",
+        "country": "Morocco",
+        "reg_number": "MORFARM-003",
+        "name": "PESBAK FISH",
+        "capacity_t": 1500.0,
+        "vertex_count": 3
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -6.638425666666667,
+          34.41240766666667
+        ]
+      },
+      "properties": {
+        "iccat_serial": "AT001MAR00005",
+        "country": "Morocco",
+        "reg_number": "MORFARM-004",
+        "name": "ATLANTIQUE TUNA FARM",
+        "capacity_t": 300.0,
+        "vertex_count": 3
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -6.178907333333334,
+          35.33530566666666
+        ]
+      },
+      "properties": {
+        "iccat_serial": "AT001MAR00006",
+        "country": "Morocco",
+        "reg_number": "MORFARM-005",
+        "name": "DAM'S TUNA",
+        "capacity_t": 1500.0,
+        "vertex_count": 3
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          4.844717,
+          60.94555
+        ]
+      },
+      "properties": {
+        "iccat_serial": "AT001NOR00008",
+        "country": "Norway",
+        "reg_number": "11749",
+        "name": "Bårøy",
+        "capacity_t": 30.0,
+        "vertex_count": 1
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          5.00695,
+          61.016667
+        ]
+      },
+      "properties": {
+        "iccat_serial": "AT001NOR00009",
+        "country": "Norway",
+        "reg_number": "12978",
+        "name": "Lyngholmen",
+        "capacity_t": 30.0,
+        "vertex_count": 1
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          5.131667,
+          61.204717
+        ]
+      },
+      "properties": {
+        "iccat_serial": "AT001NOR00002",
+        "country": "Norway",
+        "reg_number": "33077",
+        "name": "Elveneset",
+        "capacity_t": 30.0,
+        "vertex_count": 1
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          5.261383,
+          61.20055
+        ]
+      },
+      "properties": {
+        "iccat_serial": "AT001NOR00003",
+        "country": "Norway",
+        "reg_number": "11643",
+        "name": "Hatlem",
+        "capacity_t": 30.0,
+        "vertex_count": 1
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          4.982217,
+          61.39055
+        ]
+      },
+      "properties": {
+        "iccat_serial": "AT001NOR00004",
+        "country": "Norway",
+        "reg_number": "36297",
+        "name": "Kjeringeholmen",
+        "capacity_t": 30.0,
+        "vertex_count": 1
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          4.884717,
+          60.945
+        ]
+      },
+      "properties": {
+        "iccat_serial": "AT001NOR00005",
+        "country": "Norway",
+        "reg_number": "11737",
+        "name": "Skorpa",
+        "capacity_t": 30.0,
+        "vertex_count": 1
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          5.028617,
+          60.876117
+        ]
+      },
+      "properties": {
+        "iccat_serial": "AT001NOR00006",
+        "country": "Norway",
+        "reg_number": "11700",
+        "name": "Storeneset",
+        "capacity_t": 30.0,
+        "vertex_count": 1
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          5.1925,
+          61.20305
+        ]
+      },
+      "properties": {
+        "iccat_serial": "AT001NOR00007",
+        "country": "Norway",
+        "reg_number": "10311",
+        "name": "Storlia",
+        "capacity_t": 30.0,
+        "vertex_count": 1
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          11.1383335,
+          35.300417
+        ]
+      },
+      "properties": {
+        "iccat_serial": "AT001TUN00005",
+        "country": "Tunisia",
+        "reg_number": "0818812Y",
+        "name": "Société Neifer et Ben Hmida (SNB)",
+        "capacity_t": 0.0,
+        "vertex_count": 4
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          11.1466665,
+          35.300417
+        ]
+      },
+      "properties": {
+        "iccat_serial": "AT001TUN00006",
+        "country": "Tunisia",
+        "reg_number": "B161042002",
+        "name": "Taher Hajji et Cie (THC)",
+        "capacity_t": 0.0,
+        "vertex_count": 4
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          10.5755555,
+          36.0045835
+        ]
+      },
+      "properties": {
+        "iccat_serial": "AT001TUN00001",
+        "country": "Tunisia",
+        "reg_number": "B18992003",
+        "name": "Vivier Maritime de Tunisie (VMT)",
+        "capacity_t": 400.0,
+        "vertex_count": 4
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          11.081111,
+          35.4136115
+        ]
+      },
+      "properties": {
+        "iccat_serial": "AT001TUN00002",
+        "country": "Tunisia",
+        "reg_number": "784034SAM",
+        "name": "Tunisia Tuna (TT)",
+        "capacity_t": 2200.0,
+        "vertex_count": 4
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          11.146874999999998,
+          35.314167
+        ]
+      },
+      "properties": {
+        "iccat_serial": "AT001TUN00003",
+        "country": "Tunisia",
+        "reg_number": "B11302003",
+        "name": "Sagun-Douss",
+        "capacity_t": 500.0,
+        "vertex_count": 4
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          10.5718055,
+          36.02875
+        ]
+      },
+      "properties": {
+        "iccat_serial": "AT001TUN00004",
+        "country": "Tunisia",
+        "reg_number": "0584123E",
+        "name": "Tuna Farms of Tunisia (TFT)",
+        "capacity_t": 1950.0,
+        "vertex_count": 4
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          26.38975,
+          38.488769500000004
+        ]
+      },
+      "properties": {
+        "iccat_serial": "AT001TUR00004",
+        "country": "Turkey",
+        "reg_number": "35-39",
+        "name": "Sagun Tuna Farming",
+        "capacity_t": 800.0,
+        "vertex_count": 2
+      }
+    }
+  ]
+}

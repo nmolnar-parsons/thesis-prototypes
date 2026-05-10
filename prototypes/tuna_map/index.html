@@ -4,8 +4,12 @@
 <html lang='en'>
   <head>
     <meta charset='utf-8' />
-    <title>Add custom markers in Mapbox GL JS</title>
+    <title>Tuna Catch Map 1965-2023</title>
     <meta name='viewport' content='width=device-width, initial-scale=1' />
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://gstatic.com" crossorigin>
+    <link href="https://googleapis.com" rel="stylesheet">
 
     <style>
       body {
@@ -41,6 +45,12 @@
       .mapboxgl-popup-content {
         text-align: center;
         font-family: sans-serif;
+      }
+
+      .fish-farm-hover-popup .mapboxgl-popup-content {
+        text-align: left;
+        padding: 10px 12px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
       }
 
       #controls {
@@ -222,7 +232,7 @@
       #bottomOverlay {
         position: absolute;
         left: 50%;
-        bottom: 80px;
+        top: 80px;
         transform: translateX(-50%);
         z-index: 11;
         display: flex;
@@ -236,11 +246,12 @@
         /* background: rgba(255, 255, 255, 0.9); */
         /* border: 1px solid rgba(0, 0, 0, 0.15); */
         /* border-radius: 20px; */
-        padding: 6px 14px;
+        /* padding: 6px 14px; */
         font-family: sans-serif;
         font-size: 20px;
         color: #ffffff;
-        font-weight: 700;
+        font-family: 'Noto Serif', serif;
+        font-weight: 400;
       }
 
       #colorScale {
@@ -249,7 +260,8 @@
         /* border: 1px solid rgba(0, 0, 0, 0.15); */
         /* border-radius: 8px; */
         padding: 10px 12px;
-        font-family: sans-serif;
+        font-family: 'Noto Serif', serif;
+        font-weight: 400;
       }
 
       .color-scale-title {
@@ -263,7 +275,7 @@
       .color-scale-bar {
         width: 100%;
         height: 12px;
-        border-radius: 999px;
+        /* border-radius: 999px;   */
         /* Matches app.js getColorRampExpression (ocean → white by catch scale) */
         background: linear-gradient(
           to right,
@@ -306,11 +318,21 @@
       <div class='toggle-group'>
         <label>Dataset:</label>
         <button class='dataset-btn active' data-dataset='catch1deg'>1° Catch</button>
-        <button class='dataset-btn' data-dataset='bluefin1deg'>1° Bluefin Catch</button>
-        <button class='dataset-btn' data-dataset='sea1deg'>1° Sea</button>
-        <button class='dataset-btn' data-dataset='grid1deg'>1° Grid</button>
+        <button class='dataset-btn' data-dataset='bluefin1deg'>1° Bluefin</button>
         <button class='dataset-btn' data-dataset='catch5deg'>5° Catch</button>
-        <button class='dataset-btn' data-dataset='bluefin-only-5deg'>bluefin</button>
+        <button class='dataset-btn' data-dataset='bluefin-only-5deg'>5° Bluefin</button>
+      </div>
+
+      <div class='toggle-group'>
+        <button
+          type='button'
+          class='toggle-btn active'
+          id='toggleFishFarmsBtn'
+          aria-pressed='true'
+          title='Toggle ICCAT tuna farm locations'
+        >
+          ICCAT farms on
+        </button>
       </div>
 
       <div class='toggle-group'>
@@ -333,12 +355,12 @@
       
       <div class='control-group'>
         <label for='rotateSpeedSlider'>Rotation Speed: <span class='control-value' id='rotateSpeedValue'>0</span>°/s</label>
-        <input type='range' id='rotateSpeedSlider' min='0' max='30' step='0.5' value='0' />
+        <input type='range' id='rotateSpeedSlider' min='0.5' max='30' step='0.5' value='0' />
       </div>
 
       <div class='control-group'>
         <label for='yearSpeedSlider'>Year Advancement: <span class='control-value' id='yearSpeedValue'>0</span> yrs/s</label>
-        <input type='range' id='yearSpeedSlider' min='0' max='20' step='1' value='0' />
+        <input type='range' id='yearSpeedSlider' min='0' max='20' step='.5' value='0' />
       </div>
 
       <div class='control-group'>

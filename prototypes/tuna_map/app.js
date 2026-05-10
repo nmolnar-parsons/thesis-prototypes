@@ -7,6 +7,7 @@ mapboxgl.accessToken = ''; // replace with your own access token
 let currentYear = 2020;
 let currentType = 'count';
 let currentDataset = 'catch1deg';
+let fishFarmsVisible = true;
 let ocean_color = '#13265f';
 
 function getYearPropertyExpression(type, year) {
@@ -227,6 +228,144 @@ map.on('load', function() {
     }
   });
 
+  map.addSource('fish-farms', {
+    type: 'geojson',
+    data: 'data/iccat_fish_farms_centroids.geojson'
+  });
+
+  map.addLayer({
+    id: 'fish-farms',
+    type: 'circle',
+    source: 'fish-farms',
+    paint: {
+      'circle-radius': [
+        'interpolate',
+        ['linear'],
+        ['zoom'],
+        0,
+        4,
+        2,
+        5,
+        4,
+        7,
+        6,
+        10,
+        9,
+        16
+      ],
+      'circle-color': '#22c55e',
+      'circle-stroke-width': 1,
+      'circle-stroke-color': '#14532d'
+    }
+  });
+
+  function escapeFarmDetailText(value) {
+    if (value === null || value === undefined || value === '') {
+      return '—';
+    }
+    return String(value)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  }
+
+  function fishFarmTooltipHtml(props, lng, lat, includeCapacity) {
+    const lonStr = lng.toFixed(5);
+    const latStr = lat.toFixed(5);
+    const capLine =
+      includeCapacity &&
+      props.capacity_t != null &&
+      props.capacity_t !== '' &&
+      !Number.isNaN(Number(props.capacity_t))
+        ? '<div style="margin-top:6px">Capacity (t): ' +
+          escapeFarmDetailText(props.capacity_t) +
+          '</div>'
+        : '';
+    return (
+      '<div style="font-size:12px;line-height:1.45;text-align:left">' +
+      '<div><strong>' +
+      escapeFarmDetailText(props.name || 'Farm') +
+      '</strong></div>' +
+      '<div>ICCAT: ' +
+      escapeFarmDetailText(props.iccat_serial) +
+      '</div>' +
+      '<div>Country: ' +
+      escapeFarmDetailText(props.country) +
+      '</div>' +
+      '<div>Reg.: ' +
+      escapeFarmDetailText(props.reg_number) +
+      '</div>' +
+      '<div>Lat/Lon: ' +
+      latStr +
+      ', ' +
+      lonStr +
+      '</div>' +
+      capLine +
+      '</div>'
+    );
+  }
+
+  const fishFarmHoverPopup = new mapboxgl.Popup({
+    closeButton: false,
+    closeOnClick: false,
+    maxWidth: '300px',
+    className: 'fish-farm-hover-popup'
+  });
+
+  map.on('mousemove', 'fish-farms', function(e) {
+    if (!fishFarmsVisible) return;
+    const feature = e.features[0];
+    if (!feature) return;
+    const coords = feature.geometry.coordinates;
+    const lng = coords[0];
+    const lat = coords[1];
+    const props = feature.properties || {};
+    fishFarmHoverPopup
+      .setLngLat(coords)
+      .setHTML(fishFarmTooltipHtml(props, lng, lat, false))
+      .addTo(map);
+    map.getCanvas().style.cursor = 'pointer';
+  });
+
+  map.on('mouseleave', 'fish-farms', function() {
+    fishFarmHoverPopup.remove();
+    map.getCanvas().style.cursor = '';
+  });
+
+  map.on('click', 'fish-farms', function(e) {
+    if (!fishFarmsVisible) return;
+    const feature = e.features[0];
+    if (!feature) return;
+    const props = feature.properties || {};
+    const coords = feature.geometry.coordinates;
+    const lng = coords[0];
+    const lat = coords[1];
+    new mapboxgl.Popup()
+      .setLngLat(e.lngLat)
+      .setHTML(fishFarmTooltipHtml(props, lng, lat, true))
+      .addTo(map);
+  });
+
+  const toggleFishFarmsBtn = document.getElementById('toggleFishFarmsBtn');
+  if (toggleFishFarmsBtn) {
+    toggleFishFarmsBtn.addEventListener('click', function() {
+      fishFarmsVisible = !fishFarmsVisible;
+      map.setLayoutProperty(
+        'fish-farms',
+        'visibility',
+        fishFarmsVisible ? 'visible' : 'none'
+      );
+      if (!fishFarmsVisible) {
+        fishFarmHoverPopup.remove();
+        map.getCanvas().style.cursor = '';
+      }
+      toggleFishFarmsBtn.classList.toggle('active', fishFarmsVisible);
+      toggleFishFarmsBtn.setAttribute('aria-pressed', String(fishFarmsVisible));
+      toggleFishFarmsBtn.textContent = fishFarmsVisible ? 'ICCAT farms on' : 'ICCAT farms off';
+    });
+  }
+
   // Setup projection selector
   const projectionSelect = document.getElementById('projectionSelect');
   if (projectionSelect) {
@@ -359,8 +498,8 @@ map.on('load', function() {
   });
 
   yearSpeedSlider.addEventListener('input', function(e) {
-    yearSpeed = parseInt(e.target.value);
-    yearSpeedValue.textContent = yearSpeed;
+    yearSpeed = parseFloat(e.target.value);
+    yearSpeedValue.textContent = yearSpeed.toFixed(1);
   });
 
   pitchSlider.addEventListener('input', function(e) {
@@ -438,7 +577,6 @@ function updateMapLayer() {
   const roundedYear = Math.round(currentYear);
   const valueExpr = getCountEquivalentExpression(currentType, roundedYear);
   map.setPaintProperty('tuna-catch-fill', 'fill-color', getColorRampExpression(valueExpr));
-  logBluefinCombinedCount(roundedYear);
 }
 
 // Function to update dataset
