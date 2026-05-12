@@ -29,12 +29,18 @@ const YEAR_FADE_DURATION_MS = 2000;
 const WEEK_FADE_DURATION_MS = 2000;
 
 // Configuration
-const FISH_IMAGE_HEIGHT = 16; // Short side of the rendered fish before rotation
+const FISH_IMAGE_SRC = 'fish-image/highres-alt.png';
+const FISH_IMAGE_BASE_ROTATION = Math.PI; // highres-alt faces left; app angles assume a right-facing source.
+const FISH_IMAGE_HEIGHT = 20; // Short side of the rendered fish before rotation
+const FISH_SPRITE_TIER_HEIGHTS = [64, 128, 256, 512, 1024];
+const FISH_ALPHA_MEASURE_MAX_SIZE = 1024;
+const PIXEL_FISH_COLOR = 'rgb(130, 149, 166)';
+const VIEWPORT_CULLING_PADDING = 80;
 const ZOOM_SPEED = 0.04;
 const ZOOM_MIN = 0.05;
 const ZOOM_MAX = 13;
 const ZOOM_THRESHOLD = 1.0; // Threshold for switching between zoom modes
-const PIXEL_MODE_ZOOM_THRESHOLD = 0.3; // Zoom level at which to switch to pixel mode
+const PIXEL_MODE_ZOOM_THRESHOLD = 0.25; // Zoom level at which to switch to pixel mode
 const AUTO_ZOOM_IN_RATE = 0.012;
 const AUTO_ZOOM_OUT_RATE = 0.006;
 const AUTO_ZOOM_MIN = 0.05;
@@ -55,6 +61,11 @@ let fishRenderHeight = FISH_IMAGE_HEIGHT;
 let centerCanvasX = 0;
 let centerCanvasY = 0;
 let isPixelRenderModeActive = false;
+let fishSpriteTiers = [];
+let fishVisualCenterOffset = { x: 0, y: 0 };
+let canvasCssWidth = window.innerWidth;
+let canvasCssHeight = window.innerHeight;
+let canvasPixelRatio = 1;
 
 // State
 let fishData = [];
@@ -97,10 +108,11 @@ async function init() {
     // Set canvas size
     resizeCanvas();
     refreshFloorColor();
-    
+
     // Load image
-    fishImage = await loadImage('fish-image/pacific-bluefin.png');
+    fishImage = await loadImage(FISH_IMAGE_SRC);
     configureFishGeometry();
+    createFishSpriteTiers();
     
     // Load and parse CSV
     const csv = await fetch('data/toyosu_tuna_2023.csv').then(r => r.text());
@@ -182,8 +194,22 @@ async function init() {
 }
 
 function resizeCanvas() {
-    canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight;
+    canvasCssWidth = window.innerWidth;
+    canvasCssHeight = window.innerHeight;
+    canvasPixelRatio = Math.max(1, window.devicePixelRatio || 1);
+
+    const backingWidth = Math.round(canvasCssWidth * canvasPixelRatio);
+    const backingHeight = Math.round(canvasCssHeight * canvasPixelRatio);
+
+    if (canvas.width !== backingWidth) {
+        canvas.width = backingWidth;
+    }
+    if (canvas.height !== backingHeight) {
+        canvas.height = backingHeight;
+    }
+
+    canvas.style.width = `${canvasCssWidth}px`;
+    canvas.style.height = `${canvasCssHeight}px`;
 }
 
 function refreshFloorColor() {
@@ -199,13 +225,13 @@ function drawBackground() {
     } else {
         // Fallback to solid color for image/video modes (not implemented yet)
         ctx.fillStyle = floorColor;
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.fillRect(0, 0, canvasCssWidth, canvasCssHeight);
     }
 }
 
 function drawGradientBackground() {
     // Create a subtle ocean blue gradient from lighter at top to darker at bottom
-    const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+    const gradient = ctx.createLinearGradient(0, 0, 0, canvasCssHeight);
     
     // Subtle gradient: light ocean blue at top, darker ocean blue at bottom
     const lightBlue = '#276aa4';   // Lighter ocean blue
@@ -215,7 +241,7 @@ function drawGradientBackground() {
     gradient.addColorStop(1, darkBlue);
     
     ctx.fillStyle = gradient;
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.fillRect(0, 0, canvasCssWidth, canvasCssHeight);
 }
 
 function loadImage(src) {
@@ -231,6 +257,88 @@ function configureFishGeometry() {
     fishAspectRatio = fishImage.naturalWidth / fishImage.naturalHeight;
     fishRenderHeight = FISH_IMAGE_HEIGHT;
     fishRenderWidth = Math.max(4, fishRenderHeight * fishAspectRatio);
+    fishVisualCenterOffset = measureImageAlphaCenterOffset(fishImage);
+}
+
+function measureImageAlphaCenterOffset(img) {
+    const sourceWidth = img.naturalWidth || img.width;
+    const sourceHeight = img.naturalHeight || img.height;
+    const scale = Math.min(1, FISH_ALPHA_MEASURE_MAX_SIZE / Math.max(sourceWidth, sourceHeight));
+    const sampleWidth = Math.max(1, Math.round(sourceWidth * scale));
+    const sampleHeight = Math.max(1, Math.round(sourceHeight * scale));
+    const sampleCanvas = document.createElement('canvas');
+    const sampleCtx = sampleCanvas.getContext('2d', { willReadFrequently: true });
+
+    sampleCanvas.width = sampleWidth;
+    sampleCanvas.height = sampleHeight;
+    sampleCtx.drawImage(img, 0, 0, sampleWidth, sampleHeight);
+
+    const pixels = sampleCtx.getImageData(0, 0, sampleWidth, sampleHeight).data;
+    let minX = sampleWidth;
+    let minY = sampleHeight;
+    let maxX = -1;
+    let maxY = -1;
+
+    for (let y = 0; y < sampleHeight; y++) {
+        for (let x = 0; x < sampleWidth; x++) {
+            const alpha = pixels[(y * sampleWidth + x) * 4 + 3];
+            if (alpha === 0) continue;
+
+            minX = Math.min(minX, x);
+            minY = Math.min(minY, y);
+            maxX = Math.max(maxX, x);
+            maxY = Math.max(maxY, y);
+        }
+    }
+
+    if (maxX === -1 || maxY === -1) {
+        return { x: 0, y: 0 };
+    }
+
+    const alphaCenterX = (minX + maxX + 1) / 2;
+    const alphaCenterY = (minY + maxY + 1) / 2;
+
+    return {
+        x: (alphaCenterX - sampleWidth / 2) / sampleWidth,
+        y: (alphaCenterY - sampleHeight / 2) / sampleHeight
+    };
+}
+
+function createFishSpriteTiers() {
+    const sourceHeight = fishImage.naturalHeight || fishImage.height;
+    const sourceWidth = fishImage.naturalWidth || fishImage.width;
+
+    fishSpriteTiers = FISH_SPRITE_TIER_HEIGHTS
+        .filter((height) => height < sourceHeight)
+        .map((height) => {
+            const width = Math.max(1, Math.round(height * fishAspectRatio));
+            const spriteCanvas = document.createElement('canvas');
+            const spriteCtx = spriteCanvas.getContext('2d');
+
+            spriteCanvas.width = width;
+            spriteCanvas.height = height;
+            spriteCtx.imageSmoothingEnabled = true;
+            spriteCtx.imageSmoothingQuality = 'high';
+            spriteCtx.drawImage(fishImage, 0, 0, width, height);
+
+            return { image: spriteCanvas, width, height };
+        });
+
+    fishSpriteTiers.push({
+        image: fishImage,
+        width: sourceWidth,
+        height: sourceHeight
+    });
+}
+
+function getFishImageForCurrentZoom() {
+    if (fishSpriteTiers.length === 0) {
+        return fishImage;
+    }
+
+    const targetHeight = fishRenderHeight * zoom * canvasPixelRatio;
+    return fishSpriteTiers.find((tier) => tier.height >= targetHeight)?.image
+        || fishSpriteTiers[fishSpriteTiers.length - 1].image;
 }
 
 function parseCSV(csvText) {
@@ -280,7 +388,7 @@ function calculateCircularLayout() {
 
     // Place center fish - pointing upwards
     fishPositions.push({ 
-        x: -1, y: 0, 
+        x: 0, y: 0, 
         weekNumber: fishData[0].week_number, 
         fishIndex: 0, 
         angle: -Math.PI / 2,
@@ -564,8 +672,8 @@ function centerLayout() {
     } else {
         // For circular layout, zoom from center
         // Round to ensure exact pixel alignment for the center fish at world (0, 0)
-        centerCanvasX = Math.round(canvas.width / 2);
-        centerCanvasY = Math.round(canvas.height / 2);
+        centerCanvasX = Math.round(canvasCssWidth / 2);
+        centerCanvasY = Math.round(canvasCssHeight / 2);
         panX = centerCanvasX;
         panY = centerCanvasY;
     }
@@ -630,10 +738,11 @@ function animate() {
     applyAutoZoomStep();
     updatePixelRenderModeState();
 
+    ctx.setTransform(canvasPixelRatio, 0, 0, canvasPixelRatio, 0, 0);
     drawBackground();
     
     // Disable image smoothing at low zoom to reduce shimmering
-    ctx.imageSmoothingEnabled = zoom > PIXEL_MODE_ZOOM_THRESHOLD;
+    ctx.imageSmoothingEnabled = true;
     
     ctx.save();
     
@@ -669,9 +778,16 @@ function animate() {
 
 function drawFishGrid() {
     if (!fishImage || fishPositions.length === 0) return;
+
+    const visibleBounds = getVisibleWorldBounds();
+    const activeFishImage = isPixelRenderModeActive ? null : getFishImageForCurrentZoom();
     
     // Draw all fish at their circular positions
     fishPositions.forEach((fishPos) => {
+        if (!isFishVisible(fishPos, visibleBounds)) {
+            return;
+        }
+
         const fishKey = getFishKey(fishPos.weekNumber, fishPos.fishIndex);
         
         let alpha = getFishAlpha(fishKey, 0.85);
@@ -690,11 +806,33 @@ function drawFishGrid() {
         if (isPixelRenderModeActive) {
             drawPixel(fishPos.x, fishPos.y, fishPos.angle);
         } else {
-            drawRotatedFish(fishImage, fishPos.x, fishPos.y, fishRenderWidth, fishRenderHeight, fishPos.angle);
+            drawRotatedFish(activeFishImage, fishPos.x, fishPos.y, fishRenderWidth, fishRenderHeight, fishPos.angle);
         }
         
         ctx.globalAlpha = 1;
     });
+}
+
+function getVisibleWorldBounds() {
+    const inverseZoom = 1 / Math.max(zoom, 0.0001);
+    const fishRadius = Math.sqrt(fishRenderWidth * fishRenderWidth + fishRenderHeight * fishRenderHeight) / 2;
+    const padding = fishRadius + VIEWPORT_CULLING_PADDING * inverseZoom;
+
+    return {
+        left: -panX * inverseZoom - padding,
+        right: (canvasCssWidth - panX) * inverseZoom + padding,
+        top: -panY * inverseZoom - padding,
+        bottom: (canvasCssHeight - panY) * inverseZoom + padding
+    };
+}
+
+function isFishVisible(fishPos, bounds) {
+    return (
+        fishPos.x >= bounds.left &&
+        fishPos.x <= bounds.right &&
+        fishPos.y >= bounds.top &&
+        fishPos.y <= bounds.bottom
+    );
 }
 
 function drawRotatedFish(img, x, y, width, height, angle) {
@@ -713,10 +851,12 @@ function drawRotatedFish(img, x, y, width, height, angle) {
     ctx.translate(drawX, drawY);
     
     // Rotate by the angle (fish faces the given direction)
-    ctx.rotate(angle);
+    ctx.rotate(angle + FISH_IMAGE_BASE_ROTATION);
     
-    // Draw the image centered at origin
-    ctx.drawImage(img, -width / 2, -height / 2, width, height);
+    // Center the visible alpha bounds, not just the full transparent PNG rectangle.
+    const visualOffsetX = fishVisualCenterOffset.x * width;
+    const visualOffsetY = fishVisualCenterOffset.y * height;
+    ctx.drawImage(img, -width / 2 - visualOffsetX, -height / 2 - visualOffsetY, width, height);
     
     // Restore the context state
     ctx.restore();
@@ -740,8 +880,8 @@ function drawPixel(x, y, angle) {
     // Rotate by the angle (same as fish)
     ctx.rotate(angle);
     
-    // Draw simple white pixels shaped like a simplified fish
-    ctx.fillStyle = 'rgba(255, 255, 255, 1)';
+    // Draw simple blue-gray pixels shaped like a simplified fish.
+    ctx.fillStyle = PIXEL_FISH_COLOR;
     
     // Create a simplified fish shape with rectangular pixels
     const pixelSize = fishRenderHeight * 0.25;
@@ -1044,8 +1184,8 @@ function drawCenterBoxOverlay() {
 
     const boxWidth = 400;
     const boxHeight = 750;
-    const centerX = canvas.width / 2;
-    const centerY = canvas.height / 2;
+    const centerX = canvasCssWidth / 2;
+    const centerY = canvasCssHeight / 2;
     const boxX = centerX - boxWidth / 2;
     const boxY = centerY - boxHeight / 2;
 
@@ -1073,8 +1213,8 @@ function drawCenterReticleOverlay() {
         return;
     }
 
-    const centerX = canvas.width / 2;
-    const centerY = canvas.height / 2;
+    const centerX = canvasCssWidth / 2;
+    const centerY = canvasCssHeight / 2;
     const crossArm = 10;
     const innerGap = 3;
     const circleRadius = 3;
@@ -1309,8 +1449,8 @@ function applyAutoZoomStep() {
         zoomCenterY = 150;
     } else {
         // For circular layout, zoom from center
-        zoomCenterX = canvas.width * 0.5;
-        zoomCenterY = canvas.height * 0.5;
+        zoomCenterX = canvasCssWidth * 0.5;
+        zoomCenterY = canvasCssHeight * 0.5;
     }
 
     if (autoZoomDirection === -1 && stopAtZoomEnabled) {

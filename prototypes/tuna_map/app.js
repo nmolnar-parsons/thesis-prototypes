@@ -9,7 +9,7 @@ let currentType = 'count';
 let currentDataset = 'catch1deg';
 let fishFarmsVisible = true;
 let ocean_color = '#13265f';
-
+let bluefin_conversion_factor = 4; // 
 function getYearPropertyExpression(type, year) {
   return ['coalesce', ['get', `${type}_${year}`], 0];
 }
@@ -17,7 +17,7 @@ function getYearPropertyExpression(type, year) {
 function getCountEquivalentExpression(type, year) {
   const countExpr = getYearPropertyExpression('count', year);
   const tonneExpr = getYearPropertyExpression('tonne', year);
-  const tonneAsCountExpr = ['ceil', ['*', tonneExpr, 40]];
+  const tonneAsCountExpr = ['ceil', ['*', tonneExpr, bluefin_conversion_factor]];
 
   if (type === 'tonne') {
     return tonneAsCountExpr;
@@ -562,7 +562,7 @@ function logBluefinCombinedCount(year) {
         const countValue = Number(properties[countKey]) || 0;
         const tonneValue = Number(properties[tonneKey]) || 0;
 
-        return sum + countValue + Math.ceil(tonneValue * 40);
+        return sum + countValue + Math.ceil(tonneValue * bluefin_conversion_factor);
       }, 0);
 
       console.log(`Bluefin combined count for ${roundedYear}: ${total}`);
