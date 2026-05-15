@@ -1,3 +1,5 @@
+import { getCountryColor } from './countryContinentColors.js';
+
 const chartEl = document.getElementById('chart');
 const tooltipEl = document.getElementById('tooltip');
 const dataSelectEl = document.getElementById('data-select');
@@ -5,6 +7,10 @@ const speciesFilterEl = document.getElementById('species-filter');
 const toyosuPriceFilterEl = document.getElementById('toyosu-price-filter');
 const subtitleEl = document.querySelector('.subtitle');
 
+const NOAA_IMPORTS_PATH = 'data/noaa_import_tunas_bluefin.csv';
+/** NOAA: own stream + legend row only if sum(kg) ≥ this fraction of total NOAA volume; smaller countries roll into "Other". */
+const NOAA_MIN_TOTAL_VOLUME_SHARE = 0.002;
+const NOAA_OTHER_STACK_KEY = 'Other';
 const GTA_DATA_PATH = 'data/GTA_FIRMs_tuna_cleaned_countries.csv';
 const TOYOSU_DATA_PATH = 'data/toyosu_tuna_2023.csv';
 const TOYOSU_0423_DATA_PATH = 'data/toyosu_tuna_04-23.csv';
@@ -472,15 +478,7 @@ function renderChart(csvPath) {
         return;
     }
 
-    const width = chartEl.clientWidth - margin.left - margin.right;
     const height = chartEl.clientHeight - margin.top - margin.bottom;
-
-    const svg = d3.select('#chart')
-        .append('svg')
-        .attr('width', width + margin.left + margin.right)
-        .attr('height', height + margin.top + margin.bottom)
-        .append('g')
-        .attr('transform', `translate(${margin.left},${margin.top})`);
 
     d3.csv(csvPath).then(rawData => {
         let data = rawData
@@ -507,19 +505,90 @@ function renderChart(csvPath) {
 
         // Convert to array format for D3 stack
         const years = Array.from(aggregated.keys()).sort((a, b) => a - b);
-        const countries = Array.from(new Set(data.map(d => d.Country))).sort();
+        const allCountries = Array.from(new Set(data.map(d => d.Country))).sort();
+
+        let stackKeys;
+        let noaaOtherCountries = [];
+
+        if (csvPath === NOAA_IMPORTS_PATH) {
+            const withVolume = allCountries.filter(c =>
+                years.some(y => (aggregated.get(y)?.get(c) || 0) > 0)
+            );
+            const pool = withVolume.length ? withVolume : allCountries;
+            const totalBy = new Map(
+                pool.map(c => [c, d3.sum(years, y => aggregated.get(y)?.get(c) || 0)])
+            );
+            const grandTotal = d3.sum(pool, c => totalBy.get(c));
+            const minTotal = Math.max(grandTotal * NOAA_MIN_TOTAL_VOLUME_SHARE, 1);
+            const significant = pool.filter(c => totalBy.get(c) >= minTotal).sort((a, b) =>
+                a.localeCompare(b, 'en')
+            );
+            noaaOtherCountries = pool.filter(c => totalBy.get(c) < minTotal).sort((a, b) =>
+                a.localeCompare(b, 'en')
+            );
+
+            if (significant.length) {
+                stackKeys = [...significant];
+                if (noaaOtherCountries.length) {
+                    stackKeys.push(NOAA_OTHER_STACK_KEY);
+                }
+            } else if (pool.length) {
+                const top = pool.slice().sort((a, b) => totalBy.get(b) - totalBy.get(a))[0];
+                stackKeys = [top];
+                noaaOtherCountries = pool.filter(c => c !== top);
+                if (noaaOtherCountries.length) {
+                    stackKeys.push(NOAA_OTHER_STACK_KEY);
+                }
+            } else {
+                stackKeys = [];
+            }
+        } else {
+            stackKeys = allCountries;
+        }
+
+        if (!stackKeys.length) {
+            chartEl.innerHTML = '<p style="color: #444; padding: 20px;">No countries to display.</p>';
+            return;
+        }
+
+        const legendRowH = 15;
+        const legendColW = 140;
+        const maxRows = Math.max(1, Math.floor((height - 8) / legendRowH));
+        const numCols = Math.ceil(Math.max(1, stackKeys.length) / maxRows);
+        const legendMarginRight = 18 + numCols * legendColW;
+        const plotWidth = Math.max(220, chartEl.clientWidth - margin.left - legendMarginRight);
+
+        const svg = d3.select('#chart')
+            .append('svg')
+            .attr('width', plotWidth + margin.left + legendMarginRight)
+            .attr('height', height + margin.top + margin.bottom)
+            .append('g')
+            .attr('transform', `translate(${margin.left},${margin.top})`);
+
+        function truncateLegendLabel(name, maxLen = 22) {
+            const s = String(name);
+            return s.length <= maxLen ? s : `${s.slice(0, maxLen - 1)}…`;
+        }
+
+        function clearLegendDim() {
+            svg.selectAll('.country-legend-item').classed('dim', false);
+        }
 
         const stackData = years.map(year => {
             const entry = { year };
-            countries.forEach(country => {
-                entry[country] = aggregated.get(year)?.get(country) || 0;
+            stackKeys.forEach(key => {
+                if (csvPath === NOAA_IMPORTS_PATH && key === NOAA_OTHER_STACK_KEY) {
+                    entry[key] = d3.sum(noaaOtherCountries, c => aggregated.get(year)?.get(c) || 0);
+                } else {
+                    entry[key] = aggregated.get(year)?.get(key) || 0;
+                }
             });
             return entry;
         });
 
         // Create D3 stack generator with wiggle offset
         const stack = d3.stack()
-            .keys(countries)
+            .keys(stackKeys)
             .offset(d3.stackOffsetWiggle);
 
         const stackedData = stack(stackData);
@@ -527,7 +596,7 @@ function renderChart(csvPath) {
         // Create scales
         const xScale = d3.scaleLinear()
             .domain([years[0], years[years.length - 1]])
-            .range([0, width]);
+            .range([0, plotWidth]);
 
         const yScale = d3.scaleLinear()
             .domain([
@@ -536,19 +605,32 @@ function renderChart(csvPath) {
             ])
             .range([height, 0]);
 
-        // Keep the original color logic and styling behavior.
-        const colorScale = d3.scaleOrdinal()
-            .domain(countries)
-            .range(d3.schemeCategory10.concat(d3.schemePastel1).concat(d3.schemePastel2));
-
-        const getColor = country => (
-            String(country).toUpperCase() === 'JAPAN' ? '#d32f2f' : colorScale(country)
-        );
-
         const area = d3.area()
             .x(d => xScale(d.data.year))
             .y0(d => yScale(d[0]))
             .y1(d => yScale(d[1]));
+
+        function streamFill(d) {
+            return d.key === NOAA_OTHER_STACK_KEY ? '#64748b' : getCountryColor(d.key);
+        }
+
+        function legendFill(key) {
+            return key === NOAA_OTHER_STACK_KEY ? '#64748b' : getCountryColor(key);
+        }
+
+        function legendLabelText(key) {
+            if (key === NOAA_OTHER_STACK_KEY && noaaOtherCountries.length) {
+                return truncateLegendLabel(`Other (${noaaOtherCountries.length})`);
+            }
+            return truncateLegendLabel(key);
+        }
+
+        function displayNameForStreamKey(key) {
+            if (key === NOAA_OTHER_STACK_KEY && noaaOtherCountries.length) {
+                return `Other (${noaaOtherCountries.length} countries)`;
+            }
+            return key;
+        }
 
         svg.selectAll('.stream')
             .data(stackedData)
@@ -556,7 +638,7 @@ function renderChart(csvPath) {
             .append('path')
             .attr('class', 'stream')
             .attr('d', area)
-            .attr('fill', d => getColor(d.key))
+            .attr('fill', streamFill)
             .attr('data-country', d => d.key)
             .on('mouseover', function(event, d) {
                 const country = d.key;
@@ -564,9 +646,14 @@ function renderChart(csvPath) {
                 svg.selectAll('.stream')
                     .classed('inactive', stream => stream.key !== country);
 
+                svg.selectAll('.country-legend-item')
+                    .classed('dim', function() {
+                        return d3.select(this).datum() !== country;
+                    });
+
                 tooltipEl.style.display = 'block';
                 tooltipEl.innerHTML = `
-                    <div class="tooltip-country">${country}</div>
+                    <div class="tooltip-country">${displayNameForStreamKey(country)}</div>
                     <div class="tooltip-data" id="tooltip-data"></div>
                 `;
 
@@ -582,12 +669,13 @@ function renderChart(csvPath) {
             })
             .on('mouseout', function() {
                 svg.selectAll('.stream').classed('inactive', false);
+                clearLegendDim();
                 tooltipEl.style.display = 'none';
             });
 
         function updateTooltipData(event, stackedSeries) {
             const svgRect = d3.select('#chart svg').node().getBoundingClientRect();
-            const chartX = Math.max(0, Math.min(width, event.clientX - svgRect.left - margin.left));
+            const chartX = Math.max(0, Math.min(plotWidth, event.clientX - svgRect.left - margin.left));
 
             const hoveredYear = xScale.invert(chartX);
             const closestYear = years.reduce((prev, curr) => (
@@ -607,6 +695,45 @@ function renderChart(csvPath) {
             }
         }
 
+        const legend = svg.append('g')
+            .attr('class', 'country-legend')
+            .attr('transform', `translate(${plotWidth + 14}, 0)`);
+
+        const legendItems = legend.selectAll('.country-legend-item')
+            .data(stackKeys)
+            .enter()
+            .append('g')
+            .attr('class', 'country-legend-item')
+            .attr('transform', (d, i) => {
+                const col = Math.floor(i / maxRows);
+                const row = i % maxRows;
+                return `translate(${col * legendColW}, ${row * legendRowH})`;
+            })
+            .style('cursor', 'pointer')
+            .on('mouseover', function(event, country) {
+                svg.selectAll('.stream').classed('inactive', stream => stream.key !== country);
+                svg.selectAll('.country-legend-item')
+                    .classed('dim', function() {
+                        return d3.select(this).datum() !== country;
+                    });
+            })
+            .on('mouseout', function() {
+                svg.selectAll('.stream').classed('inactive', false);
+                clearLegendDim();
+            });
+
+        legendItems.append('rect')
+            .attr('width', 10)
+            .attr('height', 10)
+            .attr('rx', 2)
+            .attr('fill', legendFill);
+
+        legendItems.append('text')
+            .attr('x', 14)
+            .attr('y', 9)
+            .attr('class', 'country-legend-label')
+            .text(legendLabelText);
+
         const xAxis = d3.axisBottom(xScale)
             .tickFormat(d3.format('d'));
 
@@ -616,7 +743,7 @@ function renderChart(csvPath) {
             .call(xAxis)
             .append('text')
             .attr('class', 'axis-label')
-            .attr('x', width / 2)
+            .attr('x', plotWidth / 2)
             .attr('y', 50)
             .attr('text-anchor', 'middle')
             .text('Year');

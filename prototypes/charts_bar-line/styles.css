@@ -85,10 +85,13 @@ h1 {
     border: 1px solid #e0e0e0;
     border-radius: 4px;
     background: #fff;
+    overflow-x: auto;
 }
 
-svg {
-    width: 100%;
+#chart svg {
+    display: block;
+    width: auto;
+    max-width: none;
     height: 100%;
 }
 
@@ -128,6 +131,21 @@ svg {
 
 .line-legend text {
     font-family: inherit;
+}
+
+.country-legend-label {
+    font-size: 11px;
+    fill: #333;
+    font-family: inherit;
+    pointer-events: none;
+}
+
+.country-legend-item.dim {
+    opacity: 0.28;
+}
+
+.country-legend-item.dim .country-legend-label {
+    fill: #666;
 }
 
 .tooltip {
